@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
-import { format, startOfDay, endOfDay, startOfWeek, endOfWeek } from "date-fns";
-import { CheckCircle, Clock, Plus, Shield } from "lucide-react";
+import { format, startOfDay, endOfDay, startOfWeek, endOfWeek, addDays, isSameDay, isBefore } from "date-fns";
+import { CheckCircle, Clock, Plus } from "lucide-react";
 import Link from "next/link";
 import type { Appointment } from "@/lib/types";
 
@@ -34,7 +34,16 @@ export default async function DashboardPage() {
 
   const confirmedCount = weekAppts.filter((a) => a.status === "confirmed").length;
   const totalWeek = weekAppts.length;
-  const revenueSaved = confirmedCount * 40 * 0.2;
+
+  const weekMonday = startOfWeek(now, { weekStartsOn: 1 });
+  const today = startOfDay(now);
+  const days = Array.from({ length: 7 }, (_, i) => {
+    const date = addDays(weekMonday, i);
+    const dayAppts = weekAppts
+      .filter((a) => isSameDay(new Date(a.appointment_time), date))
+      .sort((a, b) => new Date(a.appointment_time).getTime() - new Date(b.appointment_time).getTime());
+    return { date, appointments: dayAppts };
+  });
 
   const { data: profile } = await supabase
     .from("profiles")
@@ -52,16 +61,67 @@ export default async function DashboardPage() {
         <p className="text-surface-600 font-mono text-sm mt-1">{format(now, "EEEE, d MMMM")}</p>
       </div>
 
-      {/* Revenue saved */}
-      <div className="bg-brand-500 text-white p-6 rounded-xl mb-6">
-        <div className="flex items-center gap-2 mb-2">
-          <Shield className="w-4 h-4 text-white/60" strokeWidth={2} />
-          <span className="text-white/60 text-sm">Revenue protected this week</span>
+      {/* Week calendar */}
+      <div className="bg-surface-100 rounded-xl border border-surface-300 p-4 mb-6">
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-sm font-medium text-surface-600">This week</h2>
+          <span className="text-xs font-mono text-surface-500">
+            {confirmedCount}/{totalWeek} confirmed
+          </span>
         </div>
-        <p className="text-4xl font-bold font-mono">~£{revenueSaved.toFixed(0)}</p>
-        <p className="text-white/60 text-sm mt-1 font-mono">
-          {confirmedCount}/{totalWeek} confirmed
-        </p>
+        <div className="grid grid-cols-7 gap-1">
+          {days.map((day, i) => {
+            const isToday = isSameDay(day.date, now);
+            const isPast = isBefore(day.date, today) && !isToday;
+            return (
+              <div key={i} className="flex flex-col">
+                <div className={`text-center py-1.5 rounded-lg mb-1 ${isToday ? "bg-brand-500" : ""}`}>
+                  <p
+                    className={`text-[10px] font-mono uppercase tracking-wider ${
+                      isToday ? "text-white/70" : "text-surface-500"
+                    }`}
+                  >
+                    {format(day.date, "EEE")}
+                  </p>
+                  <p
+                    className={`text-base font-bold ${
+                      isToday ? "text-white" : isPast ? "text-surface-500" : "text-white"
+                    }`}
+                  >
+                    {format(day.date, "d")}
+                  </p>
+                </div>
+                <div className="space-y-1 flex-1">
+                  {day.appointments.slice(0, 3).map((apt) => (
+                    <Link
+                      key={apt.id}
+                      href={`/appointments/${apt.id}`}
+                      className={`block p-1 rounded text-[10px] leading-tight ${
+                        apt.status === "confirmed"
+                          ? "bg-green-500/10 border border-green-500/20"
+                          : "bg-brand-500/10 border border-brand-500/20"
+                      } ${isPast ? "opacity-50" : ""}`}
+                    >
+                      <p
+                        className={`font-mono ${
+                          apt.status === "confirmed" ? "text-green-400" : "text-brand-400"
+                        }`}
+                      >
+                        {format(new Date(apt.appointment_time), "h:mma").toLowerCase()}
+                      </p>
+                      <p className="text-white truncate">{apt.client_name.split(" ")[0]}</p>
+                    </Link>
+                  ))}
+                  {day.appointments.length > 3 && (
+                    <p className="text-[10px] text-surface-500 text-center font-mono">
+                      +{day.appointments.length - 3}
+                    </p>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
       </div>
 
       {/* Usage */}

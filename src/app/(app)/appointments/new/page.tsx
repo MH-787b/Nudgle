@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
+import { PhoneInput } from "@/components/phone-input";
 
 export default function NewAppointmentPage() {
   const [clientName, setClientName] = useState("");
@@ -86,7 +87,7 @@ export default function NewAppointmentPage() {
           <label htmlFor="clientPhone" className="block text-sm font-medium text-surface-600 mb-1.5">
             Client phone
           </label>
-          <input id="clientPhone" type="tel" value={clientPhone} onChange={(e) => setClientPhone(e.target.value)} className={inputClass} placeholder="+44 7700 900000" />
+          <PhoneInput id="clientPhone" onChange={(val) => setClientPhone(val)} />
         </div>
 
         <div className="grid grid-cols-2 gap-3">

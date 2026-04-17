@@ -4,6 +4,7 @@ import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import { Bell, Calendar, Mail, MessageSquare, Phone, Zap } from "lucide-react";
+import { PhoneInput } from "@/components/phone-input";
 
 type Step = 1 | 2 | 3;
 
@@ -150,14 +151,7 @@ export default function OnboardingPage() {
                 <label htmlFor="phone" className="block text-sm font-medium text-surface-600 mb-1.5">
                   Your business phone (for sender ID)
                 </label>
-                <input
-                  id="phone"
-                  type="tel"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  className="w-full px-4 py-3 bg-surface-100 border border-surface-300 text-white rounded-lg focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition placeholder:text-surface-500"
-                  placeholder="+44 7700 900000"
-                />
+                <PhoneInput id="phone" onChange={(val) => setPhone(val)} />
               </div>
             )}
 
