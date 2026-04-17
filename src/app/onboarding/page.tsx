@@ -11,7 +11,6 @@ export default function OnboardingPage() {
   const [step, setStep] = useState<Step>(1);
   const [reminderMethod, setReminderMethod] = useState<"email" | "sms" | "whatsapp">("email");
   const [phone, setPhone] = useState("");
-  const [businessName, setBusinessName] = useState("");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
   const supabase = createClient();
@@ -33,7 +32,6 @@ export default function OnboardingPage() {
     await supabase.from("profiles").update({
       reminder_method: reminderMethod,
       phone: (reminderMethod === "sms" || reminderMethod === "whatsapp") ? phone : null,
-      business_name: businessName || null,
       onboarding_completed: true,
       reminders_active: true,
     }).eq("id", user.id);
@@ -73,20 +71,6 @@ export default function OnboardingPage() {
               <p className="mt-2 text-surface-600">
                 We&apos;ll automatically find your upcoming appointments
               </p>
-            </div>
-
-            <div>
-              <label htmlFor="businessName" className="block text-sm font-medium text-surface-600 mb-1.5">
-                Business name (optional)
-              </label>
-              <input
-                id="businessName"
-                type="text"
-                value={businessName}
-                onChange={(e) => setBusinessName(e.target.value)}
-                className="w-full px-4 py-3 bg-surface-100 border border-surface-300 text-white rounded-lg focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition placeholder:text-surface-500"
-                placeholder="e.g. Mike's Barber Shop"
-              />
             </div>
 
             <button

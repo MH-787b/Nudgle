@@ -3,8 +3,8 @@
 import { Suspense, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
-import { Bell } from "lucide-react";
+import { useSearchParams } from "next/navigation";
+import { Bell, Mail } from "lucide-react";
 
 export default function SignupPage() {
   return (
@@ -21,7 +21,7 @@ function SignupForm() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const router = useRouter();
+  const [submitted, setSubmitted] = useState(false);
   const supabase = createClient();
 
   async function handleSignup(e: React.FormEvent) {
@@ -46,8 +46,39 @@ function SignupForm() {
       return;
     }
 
-    router.push("/onboarding");
-    router.refresh();
+    setSubmitted(true);
+    setLoading(false);
+  }
+
+  if (submitted) {
+    return (
+      <div className="min-h-[100dvh] flex items-center justify-center px-4 bg-surface-900">
+        <div className="w-full max-w-sm animate-in text-center">
+          <div className="w-16 h-16 bg-brand-500/15 rounded-xl flex items-center justify-center mx-auto mb-6">
+            <Mail className="w-8 h-8 text-brand-500" strokeWidth={2} />
+          </div>
+          <h2 className="text-2xl font-bold tracking-tight text-white mb-3">Check your inbox</h2>
+          <p className="text-surface-600 leading-relaxed mb-2">
+            We&apos;ve sent a confirmation link to
+          </p>
+          <p className="text-white font-medium font-mono text-sm mb-6">{email}</p>
+          <p className="text-sm text-surface-500">
+            Click the link in the email to activate your account, then you&apos;ll be taken straight to setup.
+          </p>
+          <div className="mt-8 pt-6 border-t border-surface-300">
+            <p className="text-xs text-surface-500">
+              Didn&apos;t get it? Check your spam folder or{" "}
+              <button
+                onClick={() => setSubmitted(false)}
+                className="text-brand-500 hover:text-brand-400 transition-colors"
+              >
+                try again
+              </button>
+            </p>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (
