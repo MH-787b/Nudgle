@@ -1,0 +1,86 @@
+import { createClient } from "@/lib/supabase/server";
+import { format } from "date-fns";
+import { Calendar, CheckCircle, Clock, Plus } from "lucide-react";
+import Link from "next/link";
+import type { Appointment } from "@/lib/types";
+
+export default async function AppointmentsPage() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  const { data } = await supabase
+    .from("appointments")
+    .select("*")
+    .eq("user_id", user!.id)
+    .gte("appointment_time", new Date().toISOString())
+    .order("appointment_time", { ascending: true })
+    .limit(50);
+
+  const appointments = (data || []) as Appointment[];
+
+  return (
+    <div className="max-w-2xl mx-auto px-4 pt-8">
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-2xl font-bold tracking-tight text-white">Appointments</h1>
+        <Link
+          href="/appointments/new"
+          className="flex items-center gap-2 px-4 py-2 bg-brand-500 text-white rounded-lg font-medium text-sm hover:bg-brand-600 active:scale-[0.98] transition-all"
+        >
+          <Plus className="w-4 h-4" strokeWidth={2} />
+          Add new
+        </Link>
+      </div>
+
+      {appointments.length === 0 ? (
+        <div className="bg-surface-100 p-12 rounded-xl border border-surface-300 text-center">
+          <Calendar className="w-10 h-10 text-surface-500 mx-auto mb-4" strokeWidth={1.5} />
+          <p className="text-surface-600 mb-4">No upcoming appointments</p>
+          <Link
+            href="/appointments/new"
+            className="inline-flex items-center gap-2 px-6 py-3 bg-brand-500 text-white rounded-lg font-medium hover:bg-brand-600 active:scale-[0.98] transition-all"
+          >
+            <Plus className="w-4 h-4" strokeWidth={2} />
+            Add your first appointment
+          </Link>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {appointments.map((apt) => (
+            <Link
+              key={apt.id}
+              href={`/appointments/${apt.id}`}
+              className="block bg-surface-100 p-4 rounded-xl border border-surface-300 hover:border-brand-500/40 transition-colors"
+            >
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="font-semibold text-white">{apt.client_name}</p>
+                  <p className="text-sm text-surface-600 font-mono">
+                    {format(new Date(apt.appointment_time), "EEE, d MMM · h:mm a")}
+                  </p>
+                  {apt.client_email && (
+                    <p className="text-xs text-surface-500 mt-1">{apt.client_email}</p>
+                  )}
+                </div>
+                {apt.status === "confirmed" ? (
+                  <span className="flex items-center gap-1.5 text-xs font-medium font-mono text-green-400 bg-green-500/10 px-2.5 py-1 rounded">
+                    <CheckCircle className="w-3.5 h-3.5" strokeWidth={2} />
+                    Confirmed
+                  </span>
+                ) : apt.status === "no_response" ? (
+                  <span className="text-xs font-medium font-mono text-red-400 bg-red-500/10 px-2.5 py-1 rounded">
+                    No response
+                  </span>
+                ) : (
+                  <span className="flex items-center gap-1.5 text-xs font-medium font-mono text-amber-400 bg-amber-500/10 px-2.5 py-1 rounded">
+                    <Clock className="w-3.5 h-3.5" strokeWidth={2} />
+                    Pending
+                  </span>
+                )}
+              </div>
+            </Link>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}

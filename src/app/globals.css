@@ -1,26 +1,232 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+@theme {
+  --color-brand-50: #fff7ed;
+  --color-brand-100: #ffedd5;
+  --color-brand-200: #fed7aa;
+  --color-brand-300: #fdba74;
+  --color-brand-400: #fb923c;
+  --color-brand-500: #f97316;
+  --color-brand-600: #ea580c;
+  --color-brand-700: #c2410c;
+  --color-brand-800: #9a3412;
+  --color-brand-900: #7c2d12;
+
+  /* Dark grey + orange theme */
+  --color-surface-50: #fafafa;
+  --color-surface-100: #1e1e1e;
+  --color-surface-200: #252525;
+  --color-surface-300: #2e2e2e;
+  --color-surface-400: #404040;
+  --color-surface-500: #6b6b6b;
+  --color-surface-600: #a0a0a0;
+  --color-surface-700: #d4d4d4;
+  --color-surface-800: #e5e5e5;
+  --color-surface-900: #141414;
+
+  --font-sans: 'Outfit', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', 'SF Mono', ui-monospace, monospace;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  background-color: var(--color-surface-900);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans);
+  background-color: var(--color-surface-900);
+  color: var(--color-surface-50);
+  margin: 0;
+  min-height: 100dvh;
+  width: 100%;
+}
+
+::selection {
+  background-color: #f9731640;
+  color: white;
+}
+
+/* Scroll-entry animation */
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-in {
+  animation: fade-in-up 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.delay-1 { animation-delay: 80ms; }
+.delay-2 { animation-delay: 160ms; }
+.delay-3 { animation-delay: 240ms; }
+.delay-4 { animation-delay: 320ms; }
+
+/* Mobile: skip all entry animations — content is immediately visible */
+@media (max-width: 767px) {
+  .animate-in {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Hero dot grid — slow drifting dots */
+.hero-grid {
+  background-image: radial-gradient(circle, #d1d5db 1px, transparent 1px);
+  background-size: 40px 40px;
+  opacity: 0.4;
+  animation: grid-drift 25s linear infinite;
+}
+
+@keyframes grid-drift {
+  from { transform: translate(0, 0); }
+  to { transform: translate(40px, 40px); }
+}
+
+/* Hero center glow — subtle warm pulse */
+.hero-glow {
+  background: radial-gradient(ellipse 40% 50% at 50% 50%, rgba(249, 115, 22, 0.06) 0%, transparent 70%);
+  animation: glow-breathe 6s ease-in-out infinite;
+}
+
+@keyframes glow-breathe {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(1.1); }
+}
+
+/* ── Branch animation ────────────────────────────── */
+
+.branch-path {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  transition: stroke-dashoffset 0.5s ease;
+}
+
+.branch-container:hover .branch-path {
+  stroke-dashoffset: 0;
+  transition: stroke-dashoffset 1s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.branch-container:hover .branch-path-2 { transition-delay: 0.06s; }
+.branch-container:hover .branch-path-3 { transition-delay: 0.03s; }
+.branch-container:hover .branch-path-4 { transition-delay: 0.09s; }
+
+.branch-node {
+  opacity: 0;
+  scale: 0.85;
+  transition: opacity 0.25s ease, scale 0.25s ease;
+  will-change: opacity, scale;
+}
+
+.branch-container:hover .branch-node {
+  opacity: 1;
+  scale: 1;
+  transition: opacity 0.4s ease, scale 0.4s ease;
+}
+
+.branch-container:hover .branch-node-1 { transition-delay: 0.55s; }
+.branch-container:hover .branch-node-2 { transition-delay: 0.61s; }
+.branch-container:hover .branch-node-3 { transition-delay: 0.58s; }
+.branch-container:hover .branch-node-4 { transition-delay: 0.64s; }
+
+.hero-input-form {
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.branch-container:hover .hero-input-form {
+  border-color: var(--color-brand-500);
+  box-shadow: 0 0 30px rgba(249, 115, 22, 0.12);
+}
+
+/* ── Pixel octopus animations ────────────────────── */
+
+.octopus-float {
+  animation: octopus-float 3s ease-in-out infinite;
+}
+
+@keyframes octopus-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+
+.octopus-frame-a {
+  animation: octopus-show-a 1s steps(1) infinite;
+}
+.octopus-frame-b {
+  animation: octopus-show-b 1s steps(1) infinite;
+}
+
+@keyframes octopus-show-a {
+  0%, 49.9% { opacity: 1; }
+  50%, 100% { opacity: 0; }
+}
+@keyframes octopus-show-b {
+  0%, 49.9% { opacity: 0; }
+  50%, 100% { opacity: 1; }
+}
+
+.octopus-blink {
+  opacity: 0;
+  animation: octopus-blink 4s steps(1) infinite;
+}
+
+@keyframes octopus-blink {
+  0%, 90% { opacity: 0; }
+  91%, 95% { opacity: 1; }
+  96%, 100% { opacity: 0; }
+}
+
+/* Hover: excited bounce + wobble */
+.octopus-hover {
+  display: inline-block;
+}
+
+.octopus-hover:hover {
+  animation: octopus-bounce 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes octopus-bounce {
+  0%   { transform: scale(1)    rotate(0deg); }
+  15%  { transform: scale(1.2)  rotate(-10deg); }
+  30%  { transform: scale(1.15) rotate(8deg); }
+  45%  { transform: scale(1.18) rotate(-5deg); }
+  60%  { transform: scale(1.12) rotate(3deg); }
+  80%  { transform: scale(1.05) rotate(-1deg); }
+  100% { transform: scale(1)    rotate(0deg); }
+}
+
+/* Falling octopi easter egg */
+@keyframes octopus-fall {
+  0% {
+    translate: 0 0;
+    rotate: 0deg;
+    opacity: 1;
+  }
+  85% {
+    opacity: 1;
+  }
+  100% {
+    translate: 0 calc(100vh + 80px);
+    rotate: var(--wobble, 15deg);
+    opacity: 0;
+  }
+}
+
+.octopus-rain {
+  animation: octopus-fall 3s ease-in forwards;
+  will-change: translate;
+}
+
+/* Speed up tentacles on hover */
+.octopus-hover:hover .octopus-frame-a {
+  animation-duration: 0.3s;
+}
+.octopus-hover:hover .octopus-frame-b {
+  animation-duration: 0.3s;
 }
