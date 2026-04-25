@@ -3,7 +3,7 @@
 import { Suspense, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import { Bell, Mail } from "lucide-react";
 
 export default function SignupPage() {
@@ -22,6 +22,7 @@ function SignupForm() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const router = useRouter();
   const supabase = createClient();
 
   async function handleSignup(e: React.FormEvent) {
@@ -46,6 +47,21 @@ function SignupForm() {
       return;
     }
 
+    // If email confirmation is disabled, user is already signed in — go to onboarding
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session) {
+      // Save business name to profile (trigger only creates id/email/plan)
+      await supabase
+        .from("profiles")
+        .update({ business_name: businessName.trim() })
+        .eq("id", session.user.id);
+
+      router.push("/onboarding");
+      router.refresh();
+      return;
+    }
+
+    // Otherwise show check-your-inbox screen
     setSubmitted(true);
     setLoading(false);
   }

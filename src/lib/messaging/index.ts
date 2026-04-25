@@ -8,6 +8,7 @@ interface ReminderParams {
   clientName: string;
   appointmentTime: string;
   businessName?: string;
+  timezone?: string;
 }
 
 export function formatReminderMessage(params: ReminderParams): string {
@@ -17,6 +18,7 @@ export function formatReminderMessage(params: ReminderParams): string {
     month: "short",
     hour: "2-digit",
     minute: "2-digit",
+    timeZone: params.timezone || "Europe/London",
   });
 
   const business = params.businessName ? ` with ${params.businessName}` : "";

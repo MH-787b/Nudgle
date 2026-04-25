@@ -10,7 +10,7 @@ type Step = 1 | 2 | 3;
 
 export default function OnboardingPage() {
   const [step, setStep] = useState<Step>(1);
-  const [reminderMethod, setReminderMethod] = useState<"email" | "sms" | "whatsapp">("email");
+  const [reminderMethod, setReminderMethod] = useState<"email" | "sms" | "whatsapp">("whatsapp");
   const [phone, setPhone] = useState("");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
@@ -30,11 +30,15 @@ export default function OnboardingPage() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
+    // Business name is in user metadata from signup — ensure it's saved to profile
+    const businessName = user.user_metadata?.business_name;
+
     await supabase.from("profiles").update({
       reminder_method: reminderMethod,
       phone: (reminderMethod === "sms" || reminderMethod === "whatsapp") ? phone : null,
       onboarding_completed: true,
       reminders_active: true,
+      ...(businessName && { business_name: businessName }),
     }).eq("id", user.id);
 
     router.push("/dashboard");
@@ -86,7 +90,7 @@ export default function OnboardingPage() {
               onClick={() => setStep(2)}
               className="w-full py-4 text-surface-600 font-medium hover:text-white transition-colors"
             >
-              Skip — I&apos;ll add appointments manually
+              Skip &mdash; I&apos;ll add appointments manually
             </button>
           </div>
         )}
@@ -96,22 +100,25 @@ export default function OnboardingPage() {
           <div className="space-y-6">
             <div>
               <h2 className="text-2xl font-bold tracking-tight text-white">How should we remind customers?</h2>
-              <p className="mt-2 text-surface-600">You can change this anytime</p>
+              <p className="mt-2 text-surface-600">All channels included free &mdash; you can change this anytime</p>
             </div>
 
             <div className="space-y-3">
               <button
-                onClick={() => setReminderMethod("email")}
+                onClick={() => setReminderMethod("whatsapp")}
                 className={`w-full p-4 rounded-lg border transition-all text-left flex items-center gap-4 active:scale-[0.98] ${
-                  reminderMethod === "email"
+                  reminderMethod === "whatsapp"
                     ? "border-brand-500 bg-brand-500/10"
                     : "border-surface-300 bg-surface-100 hover:border-surface-400"
                 }`}
               >
-                <Mail className={`w-5 h-5 ${reminderMethod === "email" ? "text-brand-500" : "text-surface-500"}`} strokeWidth={2} />
-                <div>
-                  <p className="font-semibold text-white">Email</p>
-                  <p className="text-sm text-surface-600">Free & reliable</p>
+                <MessageSquare className={`w-5 h-5 ${reminderMethod === "whatsapp" ? "text-brand-500" : "text-surface-500"}`} strokeWidth={2} />
+                <div className="flex-1">
+                  <div className="flex items-center gap-2">
+                    <p className="font-semibold text-white">WhatsApp</p>
+                    <span className="text-[10px] font-mono font-medium text-green-400 bg-green-500/10 px-1.5 py-0.5 rounded">Recommended</span>
+                  </div>
+                  <p className="text-sm text-surface-600">98% open rate &mdash; included free</p>
                 </div>
               </button>
 
@@ -126,22 +133,22 @@ export default function OnboardingPage() {
                 <Phone className={`w-5 h-5 ${reminderMethod === "sms" ? "text-brand-500" : "text-surface-500"}`} strokeWidth={2} />
                 <div>
                   <p className="font-semibold text-white">SMS</p>
-                  <p className="text-sm text-surface-600">Higher open rate — customers reply YES to confirm</p>
+                  <p className="text-sm text-surface-600">45% open rate &mdash; included free</p>
                 </div>
               </button>
 
               <button
-                onClick={() => setReminderMethod("whatsapp")}
+                onClick={() => setReminderMethod("email")}
                 className={`w-full p-4 rounded-lg border transition-all text-left flex items-center gap-4 active:scale-[0.98] ${
-                  reminderMethod === "whatsapp"
+                  reminderMethod === "email"
                     ? "border-brand-500 bg-brand-500/10"
                     : "border-surface-300 bg-surface-100 hover:border-surface-400"
                 }`}
               >
-                <MessageSquare className={`w-5 h-5 ${reminderMethod === "whatsapp" ? "text-brand-500" : "text-surface-500"}`} strokeWidth={2} />
+                <Mail className={`w-5 h-5 ${reminderMethod === "email" ? "text-brand-500" : "text-surface-500"}`} strokeWidth={2} />
                 <div>
-                  <p className="font-semibold text-white">WhatsApp</p>
-                  <p className="text-sm text-surface-600">98% open rate — customers reply YES to confirm</p>
+                  <p className="font-semibold text-white">Email</p>
+                  <p className="text-sm text-surface-600">20% open rate &mdash; included free</p>
                 </div>
               </button>
             </div>
@@ -182,8 +189,7 @@ export default function OnboardingPage() {
             <div>
               <h2 className="text-2xl font-bold tracking-tight text-white">You&apos;re all set</h2>
               <p className="mt-2 text-surface-600">
-                Nudgle will send reminders 24 hours before each appointment.
-                Customers can reply to confirm.
+                Your 14-day free trial starts now. Nudgle will send reminders before each appointment &mdash; and clients can self-book via WhatsApp.
               </p>
             </div>
 
@@ -204,6 +210,16 @@ export default function OnboardingPage() {
                 <span className="text-surface-600">Confirmation</span>
                 <span className="font-medium font-mono text-white">Reply YES</span>
               </div>
+              <div className="border-t border-surface-300" />
+              <div className="flex justify-between text-sm">
+                <span className="text-surface-600">Trial</span>
+                <span className="font-medium font-mono text-green-400">14 days free</span>
+              </div>
+              <div className="border-t border-surface-300" />
+              <div className="flex justify-between text-sm">
+                <span className="text-surface-600">WhatsApp booking</span>
+                <span className="font-medium font-mono text-white">Ready to enable</span>
+              </div>
             </div>
 
             <div className="flex gap-3">
@@ -218,7 +234,7 @@ export default function OnboardingPage() {
                 disabled={loading}
                 className="flex-1 py-4 bg-brand-500 text-white rounded-lg font-bold hover:bg-brand-600 active:scale-[0.98] transition-all disabled:opacity-50"
               >
-                {loading ? "Activating..." : "Activate reminders"}
+                {loading ? "Activating..." : "Launch my dashboard"}
               </button>
             </div>
           </div>

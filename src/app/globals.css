@@ -230,3 +230,17 @@ body {
 .octopus-hover:hover .octopus-frame-b {
   animation-duration: 0.3s;
 }
+
+/* ── Page loading bar ────────────────────────────── */
+
+@keyframes loading-bar {
+  0% { width: 0; }
+  20% { width: 30%; }
+  50% { width: 60%; }
+  80% { width: 85%; }
+  100% { width: 95%; }
+}
+
+.animate-loading-bar {
+  animation: loading-bar 2s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}

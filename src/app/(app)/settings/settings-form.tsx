@@ -1,0 +1,418 @@
+"use client";
+
+import { useState } from "react";
+import { createClient } from "@/lib/supabase/client";
+import { useRouter } from "next/navigation";
+import { Check, Copy, Link2, MessageSquare, Globe } from "lucide-react";
+import type { BusinessHour } from "@/lib/types";
+
+const DAY_NAMES = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+
+const COMMON_TIMEZONES = [
+  { value: "Europe/London", label: "London (GMT/BST)" },
+  { value: "Europe/Dublin", label: "Dublin (GMT/IST)" },
+  { value: "Europe/Paris", label: "Paris (CET)" },
+  { value: "Europe/Berlin", label: "Berlin (CET)" },
+  { value: "Europe/Madrid", label: "Madrid (CET)" },
+  { value: "Europe/Rome", label: "Rome (CET)" },
+  { value: "Europe/Amsterdam", label: "Amsterdam (CET)" },
+  { value: "Europe/Brussels", label: "Brussels (CET)" },
+  { value: "Europe/Lisbon", label: "Lisbon (WET)" },
+  { value: "Europe/Athens", label: "Athens (EET)" },
+  { value: "America/New_York", label: "New York (EST)" },
+  { value: "America/Chicago", label: "Chicago (CST)" },
+  { value: "America/Denver", label: "Denver (MST)" },
+  { value: "America/Los_Angeles", label: "Los Angeles (PST)" },
+  { value: "America/Toronto", label: "Toronto (EST)" },
+  { value: "America/Vancouver", label: "Vancouver (PST)" },
+  { value: "Asia/Dubai", label: "Dubai (GST)" },
+  { value: "Asia/Kolkata", label: "India (IST)" },
+  { value: "Asia/Singapore", label: "Singapore (SGT)" },
+  { value: "Asia/Tokyo", label: "Tokyo (JST)" },
+  { value: "Australia/Sydney", label: "Sydney (AEST)" },
+  { value: "Australia/Melbourne", label: "Melbourne (AEST)" },
+  { value: "Pacific/Auckland", label: "Auckland (NZST)" },
+];
+
+const DEFAULT_HOURS: Omit<BusinessHour, "id" | "user_id">[] = [
+  { day_of_week: 0, open_time: "09:00", close_time: "17:00", is_closed: false },
+  { day_of_week: 1, open_time: "09:00", close_time: "17:00", is_closed: false },
+  { day_of_week: 2, open_time: "09:00", close_time: "17:00", is_closed: false },
+  { day_of_week: 3, open_time: "09:00", close_time: "17:00", is_closed: false },
+  { day_of_week: 4, open_time: "09:00", close_time: "17:00", is_closed: false },
+  { day_of_week: 5, open_time: "09:00", close_time: "17:00", is_closed: true },
+  { day_of_week: 6, open_time: "09:00", close_time: "17:00", is_closed: true },
+];
+
+function generateBookingCode(): string {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  let code = "";
+  for (let i = 0; i < 6; i++) {
+    code += chars[Math.floor(Math.random() * chars.length)];
+  }
+  return code;
+}
+
+interface Props {
+  profile: {
+    id: string;
+    business_name: string | null;
+    default_duration: number;
+    booking_enabled: boolean;
+    booking_code: string | null;
+    timezone: string;
+    average_appointment_value: number | null;
+  } | null;
+  businessHours: BusinessHour[];
+  whatsappNumber: string;
+}
+
+export function SettingsForm({ profile, businessHours, whatsappNumber }: Props) {
+  const router = useRouter();
+  const supabase = createClient();
+
+  const [bookingEnabled, setBookingEnabled] = useState(profile?.booking_enabled ?? false);
+  const [timezone, setTimezone] = useState(profile?.timezone ?? "Europe/London");
+  const [duration, setDuration] = useState(String(profile?.default_duration ?? 30));
+  const [hours, setHours] = useState(() => {
+    if (businessHours.length === 7) {
+      return businessHours.map((h) => ({
+        day_of_week: h.day_of_week,
+        open_time: h.open_time.slice(0, 5),
+        close_time: h.close_time.slice(0, 5),
+        is_closed: h.is_closed,
+      }));
+    }
+    return DEFAULT_HOURS.map((h) => ({ ...h }));
+  });
+  const [appointmentValue, setAppointmentValue] = useState(String(profile?.average_appointment_value ?? ""));
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [copied, setCopied] = useState<"wa" | "page" | false>(false);
+
+  const bookingCode = profile?.booking_code;
+  const cleanNumber = whatsappNumber.replace(/[^0-9]/g, "");
+  const bookingLink = bookingCode && cleanNumber
+    ? `https://wa.me/${cleanNumber}?text=BOOK%20${bookingCode}`
+    : null;
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://nudgle.vercel.app";
+  const bookingPageUrl = bookingCode ? `${appUrl}/book/${bookingCode}` : null;
+
+  function updateHour(day: number, field: "open_time" | "close_time" | "is_closed", value: string | boolean) {
+    setHours((prev) =>
+      prev.map((h) => (h.day_of_week === day ? { ...h, [field]: value } : h))
+    );
+  }
+
+  async function handleSave() {
+    if (!profile) {
+      setError("Profile not loaded. Please refresh the page.");
+      return;
+    }
+    setSaving(true);
+    setError(null);
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setError("Session expired — please refresh the page and log in again.");
+        setSaving(false);
+        return;
+      }
+
+      // Generate booking code if enabling for first time
+      let code = profile.booking_code;
+      if (bookingEnabled && !code) {
+        code = generateBookingCode();
+      }
+
+      // Update profile
+      const parsedValue = parseInt(appointmentValue);
+      const { error: profileError } = await supabase
+        .from("profiles")
+        .update({
+          booking_enabled: bookingEnabled,
+          default_duration: parseInt(duration),
+          booking_code: code,
+          timezone,
+          average_appointment_value: isNaN(parsedValue) ? null : parsedValue,
+        })
+        .eq("id", user.id);
+
+      if (profileError) {
+        setError(`Failed to save: ${profileError.message}`);
+        setSaving(false);
+        return;
+      }
+
+      // Upsert business hours
+      for (const h of hours) {
+        const { error: hoursError } = await supabase.from("business_hours").upsert(
+          {
+            user_id: user.id,
+            day_of_week: h.day_of_week,
+            open_time: h.open_time,
+            close_time: h.close_time,
+            is_closed: h.is_closed,
+          },
+          { onConflict: "user_id,day_of_week" }
+        );
+
+        if (hoursError) {
+          setError(`Failed to save business hours: ${hoursError.message}`);
+          setSaving(false);
+          return;
+        }
+      }
+
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+      router.refresh();
+    } catch (err) {
+      setError("Something went wrong. Please try again.");
+      console.error("Settings save error:", err);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function copyLink(type: "wa" | "page") {
+    const text = type === "wa" ? bookingLink : bookingPageUrl;
+    if (!text) return;
+    await navigator.clipboard.writeText(text);
+    setCopied(type);
+    setTimeout(() => setCopied(false), 2000);
+  }
+
+  const inputClass =
+    "px-3 py-2 bg-surface-100 border border-surface-300 text-white rounded-lg focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition text-sm";
+
+  return (
+    <div className="space-y-8">
+      {/* Booking toggle */}
+      <div className="bg-surface-100 rounded-xl border border-surface-300 p-5">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <MessageSquare className="w-5 h-5 text-brand-500" strokeWidth={2} />
+            <div>
+              <p className="font-semibold text-white">WhatsApp Booking</p>
+              <p className="text-sm text-surface-600">Let clients book via WhatsApp</p>
+            </div>
+          </div>
+          <button
+            onClick={() => setBookingEnabled(!bookingEnabled)}
+            className={`relative w-11 h-6 rounded-full transition-colors ${
+              bookingEnabled ? "bg-brand-500" : "bg-surface-300"
+            }`}
+          >
+            <span
+              className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform ${
+                bookingEnabled ? "translate-x-5" : ""
+              }`}
+            />
+          </button>
+        </div>
+      </div>
+
+      {bookingEnabled && (
+        <>
+          {/* Default duration */}
+          <div>
+            <label className="block text-sm font-medium text-surface-600 mb-1.5">
+              Default appointment length
+            </label>
+            <select value={duration} onChange={(e) => setDuration(e.target.value)} className={`w-full ${inputClass}`}>
+              <option value="15">15 minutes</option>
+              <option value="30">30 minutes</option>
+              <option value="45">45 minutes</option>
+              <option value="60">1 hour</option>
+              <option value="90">1.5 hours</option>
+              <option value="120">2 hours</option>
+            </select>
+          </div>
+
+          {/* Timezone */}
+          <div>
+            <label className="block text-sm font-medium text-surface-600 mb-1.5">
+              <Globe className="w-3.5 h-3.5 inline mr-1.5 -mt-0.5" strokeWidth={2} />
+              Your timezone
+            </label>
+            <select value={timezone} onChange={(e) => setTimezone(e.target.value)} className={`w-full ${inputClass}`}>
+              {COMMON_TIMEZONES.map((tz) => (
+                <option key={tz.value} value={tz.value}>{tz.label}</option>
+              ))}
+            </select>
+            <p className="text-xs text-surface-500 mt-1">
+              Ensures booking times match your local hours
+            </p>
+          </div>
+
+          {/* Business hours */}
+          <div>
+            <h2 className="text-sm font-medium text-surface-600 mb-3">Business hours</h2>
+            <div className="space-y-2">
+              {hours.map((h) => (
+                <div
+                  key={h.day_of_week}
+                  className={`flex items-center gap-2 p-3 rounded-lg border transition-colors ${
+                    h.is_closed
+                      ? "bg-surface-100/50 border-surface-300/50"
+                      : "bg-surface-100 border-surface-300"
+                  }`}
+                >
+                  <span
+                    className={`w-16 text-sm font-medium shrink-0 ${
+                      h.is_closed ? "text-surface-500" : "text-white"
+                    }`}
+                  >
+                    {DAY_NAMES[h.day_of_week].slice(0, 3)}
+                  </span>
+
+                  {h.is_closed ? (
+                    <span className="flex-1 text-sm text-surface-500">Closed</span>
+                  ) : (
+                    <div className="flex items-center gap-1.5 flex-1">
+                      <input
+                        type="time"
+                        value={h.open_time}
+                        onChange={(e) => updateHour(h.day_of_week, "open_time", e.target.value)}
+                        className={`${inputClass} w-[110px]`}
+                      />
+                      <span className="text-surface-500 text-xs">to</span>
+                      <input
+                        type="time"
+                        value={h.close_time}
+                        onChange={(e) => updateHour(h.day_of_week, "close_time", e.target.value)}
+                        className={`${inputClass} w-[110px]`}
+                      />
+                    </div>
+                  )}
+
+                  <button
+                    onClick={() => updateHour(h.day_of_week, "is_closed", !h.is_closed)}
+                    className={`text-xs font-medium px-2 py-1 rounded transition-colors ${
+                      h.is_closed
+                        ? "text-brand-500 hover:text-brand-400"
+                        : "text-surface-500 hover:text-surface-400"
+                    }`}
+                  >
+                    {h.is_closed ? "Open" : "Close"}
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Booking links */}
+          {bookingCode && (
+            <div className="bg-surface-100 rounded-xl border border-brand-500/30 p-5 space-y-4">
+              <div>
+                <div className="flex items-center gap-2 mb-2">
+                  <Link2 className="w-4 h-4 text-brand-500" strokeWidth={2} />
+                  <p className="text-sm font-medium text-white">Your booking page</p>
+                </div>
+                <p className="text-xs text-surface-600 mb-2">
+                  Share this link — clients see your hours and book via WhatsApp
+                </p>
+                <div className="flex gap-2">
+                  <code className="flex-1 px-3 py-2 bg-surface-900 rounded-lg text-xs text-brand-400 overflow-x-auto font-mono">
+                    {bookingPageUrl}
+                  </code>
+                  <button
+                    onClick={() => copyLink("page")}
+                    className="px-3 py-2 bg-brand-500 text-white rounded-lg hover:bg-brand-600 active:scale-[0.98] transition-all shrink-0"
+                  >
+                    {copied === "page" ? <Check className="w-4 h-4" strokeWidth={2} /> : <Copy className="w-4 h-4" strokeWidth={2} />}
+                  </button>
+                </div>
+              </div>
+
+              {bookingLink && (
+                <div>
+                  <div className="flex items-center gap-2 mb-2">
+                    <MessageSquare className="w-4 h-4 text-[#25D366]" strokeWidth={2} />
+                    <p className="text-sm font-medium text-white">Direct WhatsApp link</p>
+                  </div>
+                  <p className="text-xs text-surface-600 mb-2">
+                    Opens WhatsApp directly — good for bio links
+                  </p>
+                  <div className="flex gap-2">
+                    <code className="flex-1 px-3 py-2 bg-surface-900 rounded-lg text-xs text-brand-400 overflow-x-auto font-mono">
+                      {bookingLink}
+                    </code>
+                    <button
+                      onClick={() => copyLink("wa")}
+                      className="px-3 py-2 bg-brand-500 text-white rounded-lg hover:bg-brand-600 active:scale-[0.98] transition-all shrink-0"
+                    >
+                      {copied === "wa" ? <Check className="w-4 h-4" strokeWidth={2} /> : <Copy className="w-4 h-4" strokeWidth={2} />}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {!bookingCode && (
+            <p className="text-xs text-surface-500">
+              Save settings to generate your booking link.
+            </p>
+          )}
+
+          {!cleanNumber && (
+            <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg">
+              <p className="text-sm text-amber-400">
+                Set the TWILIO_WHATSAPP_NUMBER environment variable to enable WhatsApp booking.
+              </p>
+            </div>
+          )}
+        </>
+      )}
+
+      {/* Average appointment value */}
+      <div>
+        <label className="block text-sm font-medium text-surface-600 mb-1.5">
+          Average appointment value (&pound;)
+        </label>
+        <input
+          type="number"
+          min="0"
+          step="1"
+          placeholder="e.g. 25"
+          value={appointmentValue}
+          onChange={(e) => setAppointmentValue(e.target.value)}
+          className={`w-full ${inputClass}`}
+        />
+        <p className="text-xs text-surface-500 mt-1">
+          Used to show how much Nudgle saves you each month
+        </p>
+      </div>
+
+      {/* Error message */}
+      {error && (
+        <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-lg">
+          <p className="text-sm text-red-400">{error}</p>
+        </div>
+      )}
+
+      {/* Save button */}
+      <button
+        onClick={handleSave}
+        disabled={saving}
+        className="w-full py-3 bg-brand-500 text-white rounded-lg font-semibold hover:bg-brand-600 active:scale-[0.98] transition-all disabled:opacity-50"
+      >
+        {saving ? "Saving..." : "Save settings"}
+      </button>
+
+      {/* Save confirmation */}
+      {saved && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 animate-in slide-in-from-bottom-4">
+          <div className="flex items-center gap-2 px-4 py-2.5 bg-green-500/15 border border-green-500/30 rounded-lg">
+            <Check className="w-4 h-4 text-green-400" strokeWidth={2} />
+            <p className="text-sm font-medium text-green-400">Settings saved</p>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

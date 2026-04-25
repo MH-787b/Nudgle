@@ -2,8 +2,8 @@
 
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { useRouter } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { ArrowLeft, Mail, MessageSquare, Phone } from "lucide-react";
 import Link from "next/link";
 import { PhoneInput } from "@/components/phone-input";
 
@@ -11,18 +11,31 @@ export default function NewAppointmentPage() {
   const [clientName, setClientName] = useState("");
   const [clientEmail, setClientEmail] = useState("");
   const [clientPhone, setClientPhone] = useState("");
-  const [date, setDate] = useState("");
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const supabase = createClient();
+  const [date, setDate] = useState(searchParams.get("date") || "");
   const [time, setTime] = useState("");
   const [duration, setDuration] = useState("30");
+  const [reminderMethod, setReminderMethod] = useState<"email" | "sms" | "whatsapp">("whatsapp");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const router = useRouter();
-  const supabase = createClient();
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
     setError("");
+
+    if (reminderMethod === "email" && !clientEmail) {
+      setError("Client email is required for email reminders");
+      setLoading(false);
+      return;
+    }
+    if ((reminderMethod === "sms" || reminderMethod === "whatsapp") && !clientPhone) {
+      setError(`Client phone is required for ${reminderMethod === "sms" ? "SMS" : "WhatsApp"} reminders`);
+      setLoading(false);
+      return;
+    }
 
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
@@ -78,14 +91,14 @@ export default function NewAppointmentPage() {
 
         <div>
           <label htmlFor="clientEmail" className="block text-sm font-medium text-surface-600 mb-1.5">
-            Client email
+            Client email{reminderMethod === "email" ? " *" : ""}
           </label>
           <input id="clientEmail" type="email" value={clientEmail} onChange={(e) => setClientEmail(e.target.value)} className={inputClass} placeholder="john@example.com" />
         </div>
 
         <div>
           <label htmlFor="clientPhone" className="block text-sm font-medium text-surface-600 mb-1.5">
-            Client phone
+            Client phone{reminderMethod !== "email" ? " *" : ""}
           </label>
           <PhoneInput id="clientPhone" onChange={(val) => setClientPhone(val)} />
         </div>
@@ -117,6 +130,33 @@ export default function NewAppointmentPage() {
             <option value="90">1.5 hours</option>
             <option value="120">2 hours</option>
           </select>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-surface-600 mb-1.5">
+            Remind via
+          </label>
+          <div className="grid grid-cols-3 gap-2">
+            {([
+              { value: "whatsapp" as const, label: "WhatsApp", icon: MessageSquare },
+              { value: "sms" as const, label: "SMS", icon: Phone },
+              { value: "email" as const, label: "Email", icon: Mail },
+            ]).map(({ value, label, icon: Icon }) => (
+              <button
+                key={value}
+                type="button"
+                onClick={() => setReminderMethod(value)}
+                className={`flex items-center justify-center gap-1.5 py-2.5 rounded-lg border text-sm font-medium transition-all ${
+                  reminderMethod === value
+                    ? "border-brand-500 bg-brand-500/10 text-white"
+                    : "border-surface-300 bg-surface-100 text-surface-500 hover:border-surface-400"
+                }`}
+              >
+                <Icon className="w-4 h-4" strokeWidth={2} />
+                {label}
+              </button>
+            ))}
+          </div>
         </div>
 
         <button

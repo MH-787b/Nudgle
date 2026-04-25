@@ -37,7 +37,10 @@ export async function middleware(request: NextRequest) {
   const isAuthPage = request.nextUrl.pathname.startsWith('/login') ||
                      request.nextUrl.pathname.startsWith('/signup');
   const isApiRoute = request.nextUrl.pathname.startsWith('/api');
-  const isPublicPage = request.nextUrl.pathname === '/';
+  const isPublicPage = request.nextUrl.pathname === '/' ||
+                       request.nextUrl.pathname.startsWith('/book/') ||
+                       request.nextUrl.pathname.startsWith('/auth/callback') ||
+                       request.nextUrl.pathname.startsWith('/onboarding');
 
   if (!user && !isAuthPage && !isApiRoute && !isPublicPage) {
     const url = request.nextUrl.clone();

@@ -10,9 +10,16 @@ export interface Profile {
   reminders_active: boolean;
   gumroad_sale_id: string | null;
   gumroad_subscription_id: string | null;
-  plan: 'free' | 'paid';
+  plan: PlanType;
   reminders_used_this_month: number;
   reminders_limit: number;
+  sms_used_this_month: number;
+  default_duration: number;
+  booking_enabled: boolean;
+  booking_code: string | null;
+  timezone: string;
+  trial_ends_at: string | null;
+  average_appointment_value: number | null;
   created_at: string;
   updated_at: string;
 }
@@ -57,9 +64,91 @@ export interface Confirmation {
 
 export type ReminderChannel = 'sms' | 'email' | 'whatsapp';
 export type AppointmentStatus = 'pending' | 'confirmed' | 'no_response' | 'cancelled';
-export type PlanType = 'free' | 'paid';
+export type PlanType = 'trial' | 'starter' | 'business';
 
-export const PLAN_LIMITS: Record<PlanType, { reminders: number; price: number }> = {
-  free: { reminders: 50, price: 0 },
-  paid: { reminders: 1000, price: 29 },
+export interface BusinessHour {
+  id: string;
+  user_id: string;
+  day_of_week: number;
+  open_time: string;
+  close_time: string;
+  is_closed: boolean;
+}
+
+export interface Conversation {
+  id: string;
+  business_id: string;
+  client_phone: string;
+  state: ConversationState;
+  context: ConversationContext;
+  created_at: string;
+  updated_at: string;
+}
+
+export type ConversationState = 'selecting_day' | 'selecting_time' | 'confirming' | 'completed';
+
+export interface ConversationContext {
+  days?: { date: string; label: string }[];
+  selectedDay?: string;
+  slots?: { time: string; label: string }[];
+  selectedTime?: string;
+  clientName?: string;
+}
+
+export interface PlanConfig {
+  name: string;
+  price: number;
+  appointments: number;
+  channels: ReminderChannel[];
+  smsCap: number;
+  has2hReminder: boolean;
+  hasGoogleCalendar: boolean;
+  hasCustomBranding: boolean;
+  hasAnalytics: boolean;
+  hasRebookPrompt: boolean;
+  maxStaff: number;
+}
+
+export const PLAN_LIMITS: Record<PlanType, PlanConfig> = {
+  trial: {
+    name: 'Free Trial',
+    price: 0,
+    appointments: 500,
+    channels: ['email', 'whatsapp', 'sms'],
+    smsCap: 200,
+    has2hReminder: true,
+    hasGoogleCalendar: true,
+    hasCustomBranding: true,
+    hasAnalytics: true,
+    hasRebookPrompt: true,
+    maxStaff: 1,
+  },
+  starter: {
+    name: 'Starter',
+    price: 39,
+    appointments: 500,
+    channels: ['email', 'whatsapp', 'sms'],
+    smsCap: 200,
+    has2hReminder: true,
+    hasGoogleCalendar: true,
+    hasCustomBranding: true,
+    hasAnalytics: true,
+    hasRebookPrompt: true,
+    maxStaff: 1,
+  },
+  business: {
+    name: 'Business',
+    price: 79,
+    appointments: 1500,
+    channels: ['email', 'whatsapp', 'sms'],
+    smsCap: 500,
+    has2hReminder: true,
+    hasGoogleCalendar: true,
+    hasCustomBranding: true,
+    hasAnalytics: true,
+    hasRebookPrompt: true,
+    maxStaff: 5,
+  },
 };
+
+export const TRIAL_DURATION_DAYS = 14;

@@ -1,22 +1,26 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Bell, Calendar, CreditCard, LayoutDashboard, LogOut } from "lucide-react";
+import { Bell, Calendar, CreditCard, LayoutDashboard, Loader2, LogOut, Settings } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 
 const navItems = [
   { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
   { href: "/appointments", icon: Calendar, label: "Appointments" },
   { href: "/billing", icon: CreditCard, label: "Billing" },
+  { href: "/settings", icon: Settings, label: "Settings" },
 ];
 
 export function AppNav() {
   const pathname = usePathname();
   const router = useRouter();
   const supabase = createClient();
+  const [loggingOut, setLoggingOut] = useState(false);
 
   async function handleLogout() {
+    setLoggingOut(true);
     await supabase.auth.signOut();
     router.push("/login");
     router.refresh();
@@ -51,10 +55,15 @@ export function AppNav() {
           </div>
           <button
             onClick={handleLogout}
-            className="flex items-center gap-2 px-3 py-1.5 text-sm text-surface-600 hover:text-white transition-colors"
+            disabled={loggingOut}
+            className="flex items-center gap-2 px-3 py-1.5 text-sm text-surface-600 hover:text-white transition-colors disabled:opacity-50"
           >
-            <LogOut className="w-4 h-4" strokeWidth={2} />
-            Log out
+            {loggingOut ? (
+              <Loader2 className="w-4 h-4 animate-spin" strokeWidth={2} />
+            ) : (
+              <LogOut className="w-4 h-4" strokeWidth={2} />
+            )}
+            {loggingOut ? "Logging out..." : "Log out"}
           </button>
         </div>
       </header>
@@ -78,10 +87,15 @@ export function AppNav() {
           ))}
           <button
             onClick={handleLogout}
-            className="flex flex-col items-center gap-1 px-3 py-1 text-xs font-medium text-surface-500"
+            disabled={loggingOut}
+            className="flex flex-col items-center gap-1 px-3 py-1 text-xs font-medium text-surface-500 disabled:opacity-50"
           >
-            <LogOut className="w-5 h-5" strokeWidth={2} />
-            Log out
+            {loggingOut ? (
+              <Loader2 className="w-5 h-5 animate-spin" strokeWidth={2} />
+            ) : (
+              <LogOut className="w-5 h-5" strokeWidth={2} />
+            )}
+            {loggingOut ? "..." : "Log out"}
           </button>
         </div>
       </nav>
