@@ -1,5 +1,4 @@
 import { createClient } from "@/lib/supabase/server";
-import { format } from "date-fns";
 import { Calendar, CheckCircle, Clock, Plus } from "lucide-react";
 import Link from "next/link";
 import type { Appointment } from "@/lib/types";
@@ -8,14 +7,22 @@ export default async function AppointmentsPage() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
-  const { data } = await supabase
-    .from("appointments")
-    .select("*")
-    .eq("user_id", user!.id)
-    .gte("appointment_time", new Date().toISOString())
-    .order("appointment_time", { ascending: true })
-    .limit(50);
+  const [{ data }, { data: profile }] = await Promise.all([
+    supabase
+      .from("appointments")
+      .select("*")
+      .eq("user_id", user!.id)
+      .gte("appointment_time", new Date().toISOString())
+      .order("appointment_time", { ascending: true })
+      .limit(50),
+    supabase
+      .from("profiles")
+      .select("timezone")
+      .eq("id", user!.id)
+      .single(),
+  ]);
 
+  const tz = profile?.timezone || "Europe/London";
   const appointments = (data || []) as Appointment[];
 
   return (
@@ -55,7 +62,7 @@ export default async function AppointmentsPage() {
                 <div>
                   <p className="font-semibold text-white">{apt.client_name}</p>
                   <p className="text-sm text-surface-600 font-mono">
-                    {format(new Date(apt.appointment_time), "EEE, d MMM · h:mm a")}
+                    {new Date(apt.appointment_time).toLocaleString("en-GB", { weekday: "short", day: "numeric", month: "short", hour: "numeric", minute: "2-digit", hour12: true, timeZone: tz })}
                   </p>
                   {apt.client_email && (
                     <p className="text-xs text-surface-500 mt-1">{apt.client_email}</p>

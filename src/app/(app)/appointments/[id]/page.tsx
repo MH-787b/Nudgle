@@ -1,11 +1,22 @@
 import { createClient } from "@/lib/supabase/server";
-import { format } from "date-fns";
 import { ArrowLeft, CheckCircle, Clock, Mail, MessageSquare } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Appointment, Message } from "@/lib/types";
 import { CancelButton } from "./cancel-button";
 import { EditForm } from "./edit-form";
+
+function formatTime(iso: string, tz: string) {
+  return new Date(iso).toLocaleString("en-GB", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+    timeZone: tz,
+  });
+}
 
 export default async function AppointmentDetailPage({
   params,
@@ -26,6 +37,14 @@ export default async function AppointmentDetailPage({
   }
 
   const apt = appointment as Appointment;
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("timezone")
+    .eq("id", apt.user_id)
+    .single();
+
+  const tz = profile?.timezone || "Europe/London";
 
   const { data: messages } = await supabase
     .from("messages")
@@ -50,7 +69,7 @@ export default async function AppointmentDetailPage({
           <div>
             <h1 className="text-xl font-bold tracking-tight text-white">{apt.client_name}</h1>
             <p className="text-surface-600 font-mono text-sm">
-              {format(new Date(apt.appointment_time), "EEEE, d MMMM · h:mm a")}
+              {formatTime(apt.appointment_time, tz)}
             </p>
           </div>
           {apt.status === "confirmed" ? (
@@ -112,7 +131,7 @@ export default async function AppointmentDetailPage({
                   </span>
                 </div>
                 <p className="text-surface-600 mt-1 font-mono text-xs">
-                  {format(new Date(msg.sent_at), "d MMM, h:mm a")} via {msg.channel}
+                  {new Date(msg.sent_at).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit", hour12: true, timeZone: tz })} via {msg.channel}
                 </p>
               </div>
             ))}

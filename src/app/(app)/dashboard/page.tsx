@@ -51,7 +51,7 @@ export default async function DashboardPage() {
   const [{ data: profile }, { count: confirmedThisMonth }] = await Promise.all([
     supabase
       .from("profiles")
-      .select("reminders_used_this_month, reminders_limit, business_name, booking_enabled, booking_code, average_appointment_value, plan, trial_ends_at")
+      .select("reminders_used_this_month, reminders_limit, business_name, booking_enabled, booking_code, average_appointment_value, plan, trial_ends_at, timezone")
       .eq("id", user!.id)
       .single(),
     supabase
@@ -63,6 +63,7 @@ export default async function DashboardPage() {
       .lte("appointment_time", monthEnd),
   ]);
 
+  const tz = profile?.timezone || "Europe/London";
   const appointmentValue = profile?.average_appointment_value || 0;
   const savedAmount = (confirmedThisMonth || 0) * appointmentValue;
 
@@ -175,7 +176,7 @@ export default async function DashboardPage() {
                           apt.status === "confirmed" ? "text-green-400" : "text-brand-400"
                         }`}
                       >
-                        {format(new Date(apt.appointment_time), "h:mma").toLowerCase()}
+                        {new Date(apt.appointment_time).toLocaleString("en-GB", { hour: "numeric", minute: "2-digit", hour12: true, timeZone: tz }).toLowerCase()}
                       </p>
                       <p className="text-white truncate">{apt.client_name.split(" ")[0]}</p>
                     </Link>
@@ -311,7 +312,7 @@ export default async function DashboardPage() {
               <div>
                 <p className="font-semibold text-white">{apt.client_name}</p>
                 <p className="text-sm text-surface-600 font-mono">
-                  {format(new Date(apt.appointment_time), "h:mm a")}
+                  {new Date(apt.appointment_time).toLocaleString("en-GB", { hour: "numeric", minute: "2-digit", hour12: true, timeZone: tz })}
                 </p>
               </div>
               {apt.status === "confirmed" ? (
