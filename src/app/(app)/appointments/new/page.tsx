@@ -17,7 +17,7 @@ export default function NewAppointmentPage() {
   const [date, setDate] = useState(searchParams.get("date") || "");
   const [time, setTime] = useState("");
   const [duration, setDuration] = useState("30");
-  const [reminderMethod, setReminderMethod] = useState<"email" | "sms" | "whatsapp">("whatsapp");
+  const [reminderMethod, setReminderMethod] = useState<"email" | "sms" | "whatsapp">("email");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -138,22 +138,26 @@ export default function NewAppointmentPage() {
           </label>
           <div className="grid grid-cols-3 gap-2">
             {([
-              { value: "whatsapp" as const, label: "WhatsApp", icon: MessageSquare },
-              { value: "sms" as const, label: "SMS", icon: Phone },
-              { value: "email" as const, label: "Email", icon: Mail },
-            ]).map(({ value, label, icon: Icon }) => (
+              { value: "whatsapp" as const, label: "WhatsApp", icon: MessageSquare, comingSoon: true },
+              { value: "sms" as const, label: "SMS", icon: Phone, comingSoon: true },
+              { value: "email" as const, label: "Email", icon: Mail, comingSoon: false },
+            ]).map(({ value, label, icon: Icon, comingSoon }) => (
               <button
                 key={value}
                 type="button"
-                onClick={() => setReminderMethod(value)}
-                className={`flex items-center justify-center gap-1.5 py-2.5 rounded-lg border text-sm font-medium transition-all ${
-                  reminderMethod === value
-                    ? "border-brand-500 bg-brand-500/10 text-white"
-                    : "border-surface-300 bg-surface-100 text-surface-500 hover:border-surface-400"
+                onClick={() => !comingSoon && setReminderMethod(value)}
+                disabled={comingSoon}
+                className={`relative flex items-center justify-center gap-1.5 py-2.5 rounded-lg border text-sm font-medium transition-all ${
+                  comingSoon
+                    ? "border-surface-300 bg-surface-100 text-surface-500 opacity-50 cursor-not-allowed"
+                    : reminderMethod === value
+                      ? "border-brand-500 bg-brand-500/10 text-white"
+                      : "border-surface-300 bg-surface-100 text-surface-500 hover:border-surface-400"
                 }`}
               >
                 <Icon className="w-4 h-4" strokeWidth={2} />
                 {label}
+                {comingSoon && <span className="text-[9px] font-mono text-surface-500">Soon</span>}
               </button>
             ))}
           </div>
