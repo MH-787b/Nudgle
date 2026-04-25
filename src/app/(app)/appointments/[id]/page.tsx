@@ -5,6 +5,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Appointment, Message } from "@/lib/types";
 import { CancelButton } from "./cancel-button";
+import { EditForm } from "./edit-form";
 
 export default async function AppointmentDetailPage({
   params,
@@ -86,7 +87,8 @@ export default async function AppointmentDetailPage({
         </div>
 
         {apt.status !== "cancelled" && (
-          <div className="mt-4 pt-4 border-t border-surface-300">
+          <div className="mt-4 pt-4 border-t border-surface-300 flex items-center gap-4">
+            <EditForm appointment={apt} />
             <CancelButton appointmentId={apt.id} />
           </div>
         )}

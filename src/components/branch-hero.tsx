@@ -95,7 +95,7 @@ export default function BranchHero() {
           </div>
 
           <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold tracking-tighter text-white leading-[1.1]">
-            Meet Nudgle &mdash; the AI booking agent
+            Meet Nudgle: the AI booking agent
           </h1>
           <p className="mt-4 text-surface-600 text-base sm:text-lg max-w-[48ch] mx-auto leading-relaxed">
             Sends reminders, chases confirmations, and fills your calendar &mdash; so you can focus on what you&apos;re great at. No tech skills needed.
