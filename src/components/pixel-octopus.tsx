@@ -36,7 +36,7 @@ function gridToShadow(grid: Grid, px: number, yOff = 0): string {
   for (let y = 0; y < grid.length; y++) {
     for (let x = 0; x < grid[y].length; x++) {
       const c = grid[y][x];
-      if (c) parts.push(`${x * px}px ${(y + yOff) * px}px 0 0 ${c}`);
+      if (c) parts.push(`${x * px}px ${(y + yOff) * px}px 0 0.5px ${c}`);
     }
   }
   return parts.join(', ');
@@ -119,7 +119,7 @@ export default function PixelOctopus({ size = 6 }: { size?: number }) {
   const rows = bodyGrid.length + tentaclesA.length;
   const frameA = buildFrame(size, tentaclesA);
   const frameB = buildFrame(size, tentaclesB);
-  const blink = `${3 * size}px ${3 * size}px 0 0 ${M}, ${6 * size}px ${3 * size}px 0 0 ${M}`;
+  const blink = `${3 * size}px ${3 * size}px 0 0.5px ${M}, ${6 * size}px ${3 * size}px 0 0.5px ${M}`;
 
   const [batches, setBatches] = useState<FallingOctopus[][]>([]);
   const batchRef = useRef(0);
