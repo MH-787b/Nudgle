@@ -6,7 +6,7 @@ Appointment reminder SaaS for small service businesses. Reduces no-shows via ema
 
 - **Frontend:** Next.js 16 (App Router, TypeScript, Tailwind CSS v4)
 - **Auth + DB:** Supabase (email/password auth, Postgres with RLS, custom SMTP via Resend)
-- **Email:** Resend (free tier, 100/day + SMTP for auth emails)
+- **Email:** Resend (verified domain `nudgle.co.uk`, sends from `reminders@nudgle.co.uk`, free tier 100/day + SMTP for auth emails)
 - **SMS + WhatsApp:** Twilio (WhatsApp booking bot active, SMS reminders ready)
 - **Payments:** Gumroad (2 subscription tiers, webhook at `/api/webhooks/gumroad`)
 - **Hosting:** Vercel Hobby (https://nudgle.vercel.app)
@@ -39,6 +39,7 @@ src/
 ├── app/
 │   ├── (app)/              # Authenticated app routes (dashboard, appointments, billing, settings)
 │   ├── api/
+│   │   ├── confirm/[id]/   # Email confirmation endpoint — Yes/No buttons update appointment status
 │   │   ├── cron/reminders/ # Cron endpoint — sends 24h and 2h reminders (daily at 8am)
 │   │   ├── google/         # Calendar OAuth callback + sync (not yet configured)
 │   │   └── webhooks/       # Gumroad (payments) + Twilio (SMS replies + WhatsApp booking)
@@ -71,17 +72,29 @@ src/
 - Business name is saved to profiles on signup (trigger only creates basic profile; signup page updates business_name)
 - Middleware allows unauthenticated access to: `/`, `/login`, `/signup`, `/book/*`, `/auth/callback`, `/onboarding`, `/api/*`
 - Brand colors use custom Tailwind theme: `brand-50` through `brand-900` (orange/amber)
-- Google Calendar integration partially scaffolded (`src/app/api/google/`) but not configured — planned for: read busy times (booking agent), write bookings, future auto-import
+- Google Calendar integration built (`src/lib/google-calendar.ts`): reads busy times (FreeBusy API), writes/updates/deletes events on appointment changes. Needs Google Cloud project + OAuth credentials (`GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `NEXT_PUBLIC_GOOGLE_CLIENT_ID`) to activate. OAuth scope is `calendar` (full read/write access to all calendars). Settings page has connect/disconnect UI. Callback supports redirect to `/settings` or `/onboarding` via `state` param.
 - Vercel cron limited to daily (8am) on Hobby plan — reminder windows widened (28h for 24h reminders, 4h for 2h) with `_sent` flag dedup
 - Settings page server component must use `select("*")` not specific columns — avoids breakage if columns are missing
-- Reminder messages use business timezone via `timeZone` option in `toLocaleString`
+- **All server-rendered times must use business timezone** — use `toLocaleString("en-GB", { timeZone: tz })` not date-fns `format()` (which defaults to UTC on Vercel, causing times to be 1h off for BST users)
 - Mobile-first design throughout
 - Dashboard shows "Nudgle saved you £X" metric (confirmed appointments × average appointment value from settings)
-- Trial users see appointments used (not days left) on both dashboard and billing; paid users see appointment usage bar
+- Trial is time-based only (14 days, no appointment cap) — dashboard + billing show "X days left" with progress bar; cron skips appointment limit for trial users
+- Dashboard has two-column layout on desktop (lg+): week calendar left half (sticky), everything else right. Mobile unchanged.
+- Week calendar is a time-grid layout (like Google Calendar) — hours 7AM–10PM on left axis, 7 day columns, events as positioned blocks sized by duration. Navigable via `?week=YYYY-MM-DD`, fullscreen toggle, current time indicator (orange line)
+- Week calendar shows Nudgle appointments (green=confirmed, orange=pending, red=cancelled) + Google Calendar events (blue, if connected). Events synced to Nudgle (via `google_event_id`) are deduplicated. All-day Google events excluded. Nudgle events are clickable (link to detail), Google events are not.
+- Week calendar handles overlapping events with side-by-side column layout (like Google Calendar) — 2 overlaps = 50% width each, 3 = 33%, etc.
+- Week calendar event interaction: Desktop — hover shows opaque popout card with full details, click navigates to appointment. Mobile — first tap expands popout, second tap navigates. Tap outside to dismiss. Google Calendar events show "Google Calendar" label, Nudgle events show status.
+- Google Calendar fetches events from ALL user calendars (not just primary) — uses calendarList API to discover calendars, then fetches events from each in parallel
+- New appointment form checks for Google Calendar conflicts before creating — shows amber warning with conflicting event names/times, user can "Add anyway" or "Change time". Check endpoint at `/api/google/check-conflicts`
+- `google_calendar_blocks_slots` profile column (migration 007) — toggle in settings controls whether Google Calendar busy times block WhatsApp booking slots. Default true (blocks). Turn off if business has staff who can cover.
 - Dashboard calendar days (today + future) are clickable — link to /appointments/new?date=YYYY-MM-DD
-- New appointment form has "Remind via" selector (WhatsApp/SMS/Email) with contact field validation
+- New appointment form has "Remind via" selector — WhatsApp/SMS marked "Coming soon", email is default until Twilio WhatsApp Business API approved
+- Appointment detail page has inline edit form (expand/collapse) for updating client details, date/time, duration
 - Trial banner on all authenticated pages (subtle → urgent → expired states)
-- Cron reminders enforce plan-level channel restrictions and SMS caps with automatic fallback (SMS cap hit → WhatsApp → email)
+- Cron reminders enforce plan-level channel restrictions and SMS caps with automatic fallback (SMS cap hit → WhatsApp → email; no phone number → email)
+- Reminder emails include Yes/No confirmation buttons (stacked, full-width) linking to `/api/confirm/[id]?response=yes|no` — Yes sets status to "confirmed", No sets status to "cancelled" + creates confirmations record
+- Appointments list page shows status badges: Confirmed (green), Cancelled (red), No response (red), Pending (amber)
+- Cron endpoint returns `debug` array with per-appointment trace (profile state, channel resolution, send result) for troubleshooting
 - Gumroad webhook maps product IDs via `GUMROAD_STARTER_PRODUCT_ID` and `GUMROAD_BUSINESS_PRODUCT_ID` env vars
 - Orange loading bar on page transitions + spinner on logout button
 - Onboarding is 3 steps (no card collection) — completion message mentions both reminders and WhatsApp booking
@@ -93,7 +106,7 @@ src/
 
 ## Temporarily Disabled
 
-- **Email confirmation on signup** — disabled in Supabase Auth settings. Resend SMTP is configured but sender domain not yet verified. Signup goes straight to onboarding. Re-enable once a custom domain is added and verified in Resend.
+- **Email confirmation on signup** — disabled in Supabase Auth settings. Resend SMTP configured, `nudgle.co.uk` domain verified. Re-enable when ready.
 
 ## WhatsApp Booking Bot
 
@@ -109,4 +122,7 @@ src/
 - Twilio webhook (`/api/webhooks/twilio`) handles both SMS confirmations and WhatsApp booking
 - WhatsApp detected via `whatsapp:` prefix in Twilio's `From` field
 - Appointments created via bot are auto-confirmed (status: "confirmed")
-- Currently using Twilio WhatsApp Sandbox (free) — number `+14155238886` — requires `join <sandbox-name>` every 72h, production needs WhatsApp Business API via Meta verification
+- Currently using Twilio WhatsApp Sandbox (free) — number `+14155238886` — requires `join <sandbox-name>` every 72h
+- WhatsApp Business API setup in progress (Twilio paid upgrade + Meta Business verification via dad's ID) — once approved, update `TWILIO_WHATSAPP_NUMBER` env var
+- Appointment overlap prevention on both create and edit forms — checks existing non-cancelled appointments for time conflicts
+- Reminder emails include "Please do not reply" footer (Resend doesn't receive inbound email)

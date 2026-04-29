@@ -1,4 +1,5 @@
 import type { Appointment, BusinessHour } from "@/lib/types";
+import type { BusyPeriod } from "@/lib/google-calendar";
 
 const DAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
@@ -64,7 +65,8 @@ export function getAvailableSlots(
   businessHours: BusinessHour[],
   appointments: Appointment[],
   durationMinutes: number,
-  timezone: string = "Europe/London"
+  timezone: string = "Europe/London",
+  busyPeriods: BusyPeriod[] = []
 ): { time: string; label: string }[] {
   const [year, month, day] = dateStr.split("-").map(Number);
   const dateObj = new Date(year, month - 1, day);
@@ -101,7 +103,13 @@ export function getAvailableSlots(
       return slotUtc < aptEnd && slotEndUtc > aptStart;
     });
 
-    if (!hasConflict) {
+    const hasBusyConflict = busyPeriods.some((busy) => {
+      const busyStart = new Date(busy.start);
+      const busyEnd = new Date(busy.end);
+      return slotUtc < busyEnd && slotEndUtc > busyStart;
+    });
+
+    if (!hasConflict && !hasBusyConflict) {
       const period = slotH >= 12 ? "PM" : "AM";
       const displayH = slotH === 0 ? 12 : slotH > 12 ? slotH - 12 : slotH;
       const displayM = slotM.toString().padStart(2, "0");

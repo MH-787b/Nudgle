@@ -18,6 +18,13 @@ export function CancelButton({ appointmentId }: { appointmentId: string }) {
       .update({ status: "cancelled" })
       .eq("id", appointmentId);
 
+    // Remove from Google Calendar (fire and forget)
+    fetch("/api/google/calendar-event", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ appointmentId }),
+    }).catch(() => {});
+
     router.refresh();
   }
 

@@ -9,6 +9,7 @@ interface ReminderParams {
   appointmentTime: string;
   businessName?: string;
   timezone?: string;
+  appointmentId?: string;
 }
 
 export function formatReminderMessage(params: ReminderParams): string {
@@ -45,24 +46,34 @@ export async function sendReminder(
       ? `Appointment reminder — ${params.businessName}`
       : "Appointment reminder";
 
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://nudgle.vercel.app";
+    const confirmUrl = `${appUrl}/api/confirm/${params.appointmentId}`;
+
     const html = `
-      <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto; padding: 24px;">
-        <h2 style="color: #f97316; margin-bottom: 16px;">Appointment Reminder</h2>
-        <p style="font-size: 16px; color: #374151;">Hi ${params.clientName},</p>
-        <p style="font-size: 16px; color: #374151;">${message}</p>
-        <div style="margin-top: 24px; padding: 16px; background: #fff7ed; border-radius: 12px;">
-          <p style="margin: 0; font-size: 14px; color: #9a3412;">
-            Reply to this email or click below to confirm your appointment.
-          </p>
+      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 480px; margin: 0 auto; padding: 32px 24px;">
+        <h2 style="color: #f97316; margin: 0 0 24px 0; font-size: 22px;">Appointment Reminder</h2>
+        <p style="font-size: 16px; color: #374151; margin: 0 0 8px 0;">Hi ${params.clientName},</p>
+        <p style="font-size: 16px; color: #374151; margin: 0 0 32px 0; line-height: 1.5;">${message}</p>
+        <div style="text-align: center;">
+          <a href="${confirmUrl}?response=yes"
+             style="display: block; padding: 14px 32px; background: #16a34a; color: #fff; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px; text-align: center;">
+            Yes, I'll be there
+          </a>
+          <div style="height: 12px;"></div>
+          <a href="${confirmUrl}?response=no"
+             style="display: block; padding: 14px 32px; background: #dc2626; color: #fff; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px; text-align: center;">
+            Can't make it
+          </a>
         </div>
-        <p style="margin-top: 24px; font-size: 12px; color: #9ca3af;">
+        <p style="margin: 32px 0 0 0; font-size: 12px; color: #9ca3af; text-align: center;">
           Sent via Nudgle — appointment reminders for small businesses
+          <br />Please do not reply to this email.
         </p>
       </div>
     `;
 
-    const success = await sendEmail(params.recipient, subject, message, html);
-    return { success };
+    const result = await sendEmail(params.recipient, subject, message, html);
+    return { success: result.success, ...(!result.success && { error: result.error }) };
   }
 
   if (params.channel === "whatsapp") {

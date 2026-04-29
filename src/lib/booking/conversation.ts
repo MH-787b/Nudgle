@@ -1,4 +1,5 @@
 import type { Appointment, BusinessHour, ConversationContext, ConversationState } from "@/lib/types";
+import type { BusyPeriod } from "@/lib/google-calendar";
 import { getAvailableDays, getAvailableSlots } from "./availability";
 
 export interface HandleResult {
@@ -50,7 +51,8 @@ export function handleDaySelection(
   businessHours: BusinessHour[],
   appointments: Appointment[],
   durationMinutes: number,
-  timezone: string = "Europe/London"
+  timezone: string = "Europe/London",
+  busyPeriods: BusyPeriod[] = []
 ): HandleResult {
   const num = parseInt(body.trim());
   const days = context.days || [];
@@ -65,7 +67,7 @@ export function handleDaySelection(
   }
 
   const selectedDay = days[num - 1];
-  const slots = getAvailableSlots(selectedDay.date, businessHours, appointments, durationMinutes, timezone);
+  const slots = getAvailableSlots(selectedDay.date, businessHours, appointments, durationMinutes, timezone, busyPeriods);
 
   if (slots.length === 0) {
     const dayList = days.map((d, i) => `${i + 1}. ${d.label}`).join("\n");

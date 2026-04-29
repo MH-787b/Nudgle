@@ -73,6 +73,10 @@ export default async function AppointmentsPage() {
                     <CheckCircle className="w-3.5 h-3.5" strokeWidth={2} />
                     Confirmed
                   </span>
+                ) : apt.status === "cancelled" ? (
+                  <span className="text-xs font-medium font-mono text-red-400 bg-red-500/10 px-2.5 py-1 rounded">
+                    Cancelled
+                  </span>
                 ) : apt.status === "no_response" ? (
                   <span className="text-xs font-medium font-mono text-red-400 bg-red-500/10 px-2.5 py-1 rounded">
                     No response

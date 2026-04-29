@@ -9,19 +9,24 @@ export async function sendEmail(
   subject: string,
   text: string,
   html?: string
-): Promise<boolean> {
+): Promise<{ success: boolean; error?: string }> {
   try {
     const resend = getClient();
-    await resend.emails.send({
+    const { error } = await resend.emails.send({
       from: process.env.RESEND_FROM_EMAIL!,
       to,
       subject,
       text,
       html: html || text,
     });
-    return true;
+    if (error) {
+      console.error("Resend API error:", error);
+      return { success: false, error: error.message };
+    }
+    return { success: true };
   } catch (error) {
-    console.error("Failed to send email:", error);
-    return false;
+    const msg = error instanceof Error ? error.message : String(error);
+    console.error("Failed to send email:", msg);
+    return { success: false, error: msg };
   }
 }

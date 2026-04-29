@@ -58,13 +58,16 @@ export async function GET(request: NextRequest) {
 
   const now = new Date();
   const results = { sent24h: 0, sent2h: 0, errors: 0 };
+  const debug: Record<string, unknown>[] = [];
 
   // --- 24-hour reminders ---
   // Cron runs once daily — catch all unreminded appointments in the next 28h
   // The reminder_24h_sent flag prevents duplicate sends
   const in28h = new Date(now.getTime() + 28 * 60 * 60 * 1000);
 
-  const { data: appointments24h } = await supabase
+  debug.push({ now: now.toISOString(), in28h: in28h.toISOString() });
+
+  const { data: appointments24h, error: queryError } = await supabase
     .from("appointments")
     .select("*, profiles:user_id(*)")
     .eq("reminder_24h_sent", false)
@@ -72,15 +75,45 @@ export async function GET(request: NextRequest) {
     .gte("appointment_time", now.toISOString())
     .lte("appointment_time", in28h.toISOString());
 
+  if (queryError) {
+    debug.push({ queryError: queryError.message, code: queryError.code });
+  }
+
+  debug.push({ appointments24h_count: appointments24h?.length ?? 0 });
+
   for (const apt of appointments24h || []) {
     const profile = apt.profiles;
-    if (!profile?.reminders_active) continue;
+    const aptDebug: Record<string, unknown> = {
+      id: apt.id,
+      client_name: apt.client_name,
+      client_email: apt.client_email,
+      appointment_time: apt.appointment_time,
+      status: apt.status,
+      reminder_24h_sent: apt.reminder_24h_sent,
+      has_profile: !!profile,
+      reminders_active: profile?.reminders_active,
+      reminder_method: profile?.reminder_method,
+      plan: profile?.plan,
+      trial_ends_at: profile?.trial_ends_at,
+      reminders_used: profile?.reminders_used_this_month,
+    };
+
+    if (!profile?.reminders_active) {
+      aptDebug.skipped = "reminders_active is false or profile missing";
+      debug.push(aptDebug);
+      continue;
+    }
 
     const effectivePlan = getEffectivePlan(profile);
     const config = PLAN_LIMITS[effectivePlan];
+    aptDebug.effectivePlan = effectivePlan;
 
-    // Check appointment usage limit
-    if (profile.reminders_used_this_month >= config.appointments) continue;
+    // Check appointment usage limit (trial is time-based only, no cap)
+    if (effectivePlan !== 'trial' && profile.reminders_used_this_month >= config.appointments) {
+      aptDebug.skipped = `usage limit reached (${profile.reminders_used_this_month}/${config.appointments})`;
+      debug.push(aptDebug);
+      continue;
+    }
 
     // Resolve channel with plan restrictions
     const channel = resolveChannel(
@@ -88,25 +121,48 @@ export async function GET(request: NextRequest) {
       effectivePlan,
       profile.sms_used_this_month || 0,
     );
-    if (!channel) continue;
+    aptDebug.resolved_channel = channel;
+    if (!channel) {
+      aptDebug.skipped = "no channel resolved";
+      debug.push(aptDebug);
+      continue;
+    }
 
-    const recipient = (channel === "sms" || channel === "whatsapp") ? apt.client_phone : apt.client_email;
-    if (!recipient) continue;
+    let actualChannel = channel;
+    let recipient = (actualChannel === "sms" || actualChannel === "whatsapp") ? apt.client_phone : apt.client_email;
+
+    // Fall back to email if preferred channel has no recipient
+    if (!recipient && actualChannel !== "email" && apt.client_email) {
+      actualChannel = "email";
+      recipient = apt.client_email;
+    }
+
+    aptDebug.resolved_channel = actualChannel;
+    aptDebug.recipient = recipient;
+    if (!recipient) {
+      aptDebug.skipped = `no recipient for channel ${actualChannel}`;
+      debug.push(aptDebug);
+      continue;
+    }
 
     const result = await sendReminder({
-      channel,
+      channel: actualChannel,
       recipient,
       clientName: apt.client_name,
       appointmentTime: apt.appointment_time,
       businessName: profile.business_name,
       timezone: profile.timezone || "Europe/London",
+      appointmentId: apt.id,
     });
+
+    aptDebug.send_result = result;
+    debug.push(aptDebug);
 
     if (result.success) {
       await supabase.from("messages").insert({
         appointment_id: apt.id,
         user_id: apt.user_id,
-        channel,
+        channel: actualChannel,
         message_type: "reminder_24h",
         recipient,
         content: `24h reminder for ${apt.client_name}`,
@@ -123,7 +179,7 @@ export async function GET(request: NextRequest) {
       const updates: Record<string, number> = {
         reminders_used_this_month: (profile.reminders_used_this_month || 0) + 1,
       };
-      if (channel === "sms") {
+      if (actualChannel === "sms") {
         updates.sms_used_this_month = (profile.sms_used_this_month || 0) + 1;
       }
       await supabase.from("profiles").update(updates).eq("id", apt.user_id);
@@ -159,7 +215,7 @@ export async function GET(request: NextRequest) {
     // 2h reminders only for plans that support it
     if (!config.has2hReminder) continue;
 
-    if (profile.reminders_used_this_month >= config.appointments) continue;
+    if (effectivePlan !== 'trial' && profile.reminders_used_this_month >= config.appointments) continue;
 
     const channel = resolveChannel(
       profile.reminder_method || "email",
@@ -168,23 +224,31 @@ export async function GET(request: NextRequest) {
     );
     if (!channel) continue;
 
-    const recipient = (channel === "sms" || channel === "whatsapp") ? apt.client_phone : apt.client_email;
+    let actualChannel2h = channel;
+    let recipient = (actualChannel2h === "sms" || actualChannel2h === "whatsapp") ? apt.client_phone : apt.client_email;
+
+    // Fall back to email if preferred channel has no recipient
+    if (!recipient && actualChannel2h !== "email" && apt.client_email) {
+      actualChannel2h = "email";
+      recipient = apt.client_email;
+    }
     if (!recipient) continue;
 
     const result = await sendReminder({
-      channel,
+      channel: actualChannel2h,
       recipient,
       clientName: apt.client_name,
       appointmentTime: apt.appointment_time,
       businessName: profile.business_name,
       timezone: profile.timezone || "Europe/London",
+      appointmentId: apt.id,
     });
 
     if (result.success) {
       await supabase.from("messages").insert({
         appointment_id: apt.id,
         user_id: apt.user_id,
-        channel,
+        channel: actualChannel2h,
         message_type: "reminder_2h",
         recipient,
         content: `2h follow-up reminder for ${apt.client_name}`,
@@ -200,7 +264,7 @@ export async function GET(request: NextRequest) {
       const updates: Record<string, number> = {
         reminders_used_this_month: (profile.reminders_used_this_month || 0) + 1,
       };
-      if (channel === "sms") {
+      if (actualChannel2h === "sms") {
         updates.sms_used_this_month = (profile.sms_used_this_month || 0) + 1;
       }
       await supabase.from("profiles").update(updates).eq("id", apt.user_id);
@@ -211,5 +275,5 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  return NextResponse.json({ success: true, results });
+  return NextResponse.json({ success: true, results, debug });
 }

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
-import { Check, Copy, Link2, MessageSquare, Globe } from "lucide-react";
+import { Calendar, Check, Copy, Link2, MessageSquare, Globe } from "lucide-react";
 import type { BusinessHour } from "@/lib/types";
 
 const DAY_NAMES = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
@@ -62,6 +62,8 @@ interface Props {
     booking_code: string | null;
     timezone: string;
     average_appointment_value: number | null;
+    google_calendar_connected: boolean;
+    google_calendar_blocks_slots: boolean;
   } | null;
   businessHours: BusinessHour[];
   whatsappNumber: string;
@@ -72,6 +74,7 @@ export function SettingsForm({ profile, businessHours, whatsappNumber }: Props) 
   const supabase = createClient();
 
   const [bookingEnabled, setBookingEnabled] = useState(profile?.booking_enabled ?? false);
+  const [calendarBlocksSlots, setCalendarBlocksSlots] = useState(profile?.google_calendar_blocks_slots ?? true);
   const [timezone, setTimezone] = useState(profile?.timezone ?? "Europe/London");
   const [duration, setDuration] = useState(String(profile?.default_duration ?? 30));
   const [hours, setHours] = useState(() => {
@@ -137,6 +140,7 @@ export function SettingsForm({ profile, businessHours, whatsappNumber }: Props) 
           booking_code: code,
           timezone,
           average_appointment_value: isNaN(parsedValue) ? null : parsedValue,
+          google_calendar_blocks_slots: calendarBlocksSlots,
         })
         .eq("id", user.id);
 
@@ -368,6 +372,79 @@ export function SettingsForm({ profile, businessHours, whatsappNumber }: Props) 
           )}
         </>
       )}
+
+      {/* Google Calendar */}
+      <div className="bg-surface-100 rounded-xl border border-surface-300 p-5">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Calendar className="w-5 h-5 text-brand-500" strokeWidth={2} />
+            <div>
+              <p className="font-semibold text-white">Google Calendar</p>
+              <p className="text-sm text-surface-600">
+                {profile?.google_calendar_connected
+                  ? "Connected — bookings sync automatically"
+                  : "Connect to prevent double-bookings"}
+              </p>
+            </div>
+          </div>
+          {profile?.google_calendar_connected ? (
+            <button
+              onClick={async () => {
+                if (!confirm("Disconnect Google Calendar? Existing events won't be removed.")) return;
+                const { data: { user } } = await supabase.auth.getUser();
+                if (!user) return;
+                await supabase.from("profiles").update({
+                  google_calendar_connected: false,
+                  google_refresh_token: null,
+                }).eq("id", user.id);
+                router.refresh();
+              }}
+              className="text-sm text-red-400 hover:text-red-300 font-medium transition-colors"
+            >
+              Disconnect
+            </button>
+          ) : (
+            <button
+              onClick={() => {
+                const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
+                const redirectUri = `${window.location.origin}/api/google/callback`;
+                const scope = "https://www.googleapis.com/auth/calendar";
+                const url = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=code&scope=${scope}&access_type=offline&prompt=consent&state=settings`;
+                window.location.href = url;
+              }}
+              className="px-4 py-2 bg-brand-500 text-white rounded-lg text-sm font-medium hover:bg-brand-600 active:scale-[0.98] transition-all"
+            >
+              Connect
+            </button>
+          )}
+        </div>
+        {profile?.google_calendar_connected && (
+          <div className="mt-4 pt-4 border-t border-surface-300/50">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-sm font-medium text-white">Block booked calendar times</p>
+                <p className="text-xs text-surface-500 mt-1">
+                  {calendarBlocksSlots
+                    ? "Your calendar events block booking slots — clients can't book when you're busy. Best if you work solo."
+                    : "Clients can book any open slot regardless of your calendar. Best if you have staff who can cover."}
+                </p>
+              </div>
+              <button
+                onClick={() => setCalendarBlocksSlots(!calendarBlocksSlots)}
+                className={`relative w-11 h-6 rounded-full transition-colors shrink-0 mt-0.5 ${
+                  calendarBlocksSlots ? "bg-brand-500" : "bg-surface-300"
+                }`}
+              >
+                <span
+                  className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform ${
+                    calendarBlocksSlots ? "translate-x-5" : ""
+                  }`}
+                />
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
 
       {/* Average appointment value */}
       <div>

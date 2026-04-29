@@ -1,18 +1,44 @@
 import { createClient } from "@/lib/supabase/server";
-import { format, startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, addDays, isSameDay, isBefore } from "date-fns";
+import { format, startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, addDays, isSameDay } from "date-fns";
 import { CheckCircle, Clock, MessageSquare, Plus, TrendingUp } from "lucide-react";
 import Link from "next/link";
 import type { Appointment } from "@/lib/types";
+import { WeekCalendar } from "@/components/week-calendar";
+import { getCalendarEvents, type GoogleEvent } from "@/lib/google-calendar";
 
-export default async function DashboardPage() {
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ week?: string }>;
+}) {
+  const { week } = await searchParams;
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
   const now = new Date();
   const todayStart = startOfDay(now).toISOString();
   const todayEnd = endOfDay(now).toISOString();
-  const weekStart = startOfWeek(now, { weekStartsOn: 1 }).toISOString();
-  const weekEnd = endOfWeek(now, { weekStartsOn: 1 }).toISOString();
+
+  // Week can be navigated via ?week= param
+  const weekMonday = week
+    ? startOfWeek(new Date(week + "T00:00:00"), { weekStartsOn: 1 })
+    : startOfWeek(now, { weekStartsOn: 1 });
+  const currentWeekMonday = startOfWeek(now, { weekStartsOn: 1 });
+  const isCurrentWeek = isSameDay(weekMonday, currentWeekMonday);
+
+  const weekStart = startOfDay(weekMonday).toISOString();
+  const weekEnd = endOfDay(addDays(weekMonday, 6)).toISOString();
+
+  // Navigation hrefs
+  const prevMonday = addDays(weekMonday, -7);
+  const nextMonday = addDays(weekMonday, 7);
+  const prevWeekHref = isSameDay(prevMonday, currentWeekMonday)
+    ? "/dashboard"
+    : `/dashboard?week=${format(prevMonday, "yyyy-MM-dd")}`;
+  const nextWeekHref = isSameDay(nextMonday, currentWeekMonday)
+    ? "/dashboard"
+    : `/dashboard?week=${format(nextMonday, "yyyy-MM-dd")}`;
+  const todayHref = "/dashboard";
 
   const { data: todayAppointments } = await supabase
     .from("appointments")
@@ -35,23 +61,13 @@ export default async function DashboardPage() {
   const confirmedCount = weekAppts.filter((a) => a.status === "confirmed").length;
   const totalWeek = weekAppts.length;
 
-  const weekMonday = startOfWeek(now, { weekStartsOn: 1 });
-  const today = startOfDay(now);
-  const days = Array.from({ length: 7 }, (_, i) => {
-    const date = addDays(weekMonday, i);
-    const dayAppts = weekAppts
-      .filter((a) => isSameDay(new Date(a.appointment_time), date))
-      .sort((a, b) => new Date(a.appointment_time).getTime() - new Date(b.appointment_time).getTime());
-    return { date, appointments: dayAppts };
-  });
-
   const monthStart = startOfMonth(now).toISOString();
   const monthEnd = endOfMonth(now).toISOString();
 
   const [{ data: profile }, { count: confirmedThisMonth }] = await Promise.all([
     supabase
       .from("profiles")
-      .select("reminders_used_this_month, reminders_limit, business_name, booking_enabled, booking_code, average_appointment_value, plan, trial_ends_at, timezone")
+      .select("reminders_used_this_month, reminders_limit, business_name, booking_enabled, booking_code, average_appointment_value, plan, trial_ends_at, timezone, google_calendar_connected, google_refresh_token")
       .eq("id", user!.id)
       .single(),
     supabase
@@ -63,6 +79,15 @@ export default async function DashboardPage() {
       .lte("appointment_time", monthEnd),
   ]);
 
+  // Fetch Google Calendar events if connected
+  let googleEvents: GoogleEvent[] = [];
+  if (profile?.google_calendar_connected && profile?.google_refresh_token) {
+    googleEvents = await getCalendarEvents(profile.google_refresh_token, weekStart, weekEnd);
+    // Filter out events that already exist as Nudgle appointments (by google_event_id)
+    const nudgleEventIds = new Set(weekAppts.map((a) => a.google_event_id).filter(Boolean));
+    googleEvents = googleEvents.filter((e) => !nudgleEventIds.has(e.id));
+  }
+
   const tz = profile?.timezone || "Europe/London";
   const appointmentValue = profile?.average_appointment_value || 0;
   const savedAmount = (confirmedThisMonth || 0) * appointmentValue;
@@ -73,174 +98,102 @@ export default async function DashboardPage() {
     ? `https://wa.me/${cleanNumber}?text=BOOK%20${profile.booking_code}`
     : null;
 
-  return (
-    <div className="max-w-2xl mx-auto px-4 pt-8">
-      {/* Greeting */}
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold tracking-tight text-white">
-          {profile?.business_name ? `Hi, ${profile.business_name}` : "Dashboard"}
-        </h1>
-        <p className="text-surface-600 font-mono text-sm mt-1">{format(now, "EEEE, d MMMM")}</p>
-      </div>
+  // Shared sections as JSX
+  const greetingSection = (
+    <div className="mb-8">
+      <h1 className="text-2xl font-bold tracking-tight text-white">
+        {profile?.business_name ? `Hi, ${profile.business_name}` : "Dashboard"}
+      </h1>
+      <p className="text-surface-600 font-mono text-sm mt-1">{format(now, "EEEE, d MMMM")}</p>
+    </div>
+  );
 
-      {/* Nudgle saved you £X */}
-      {appointmentValue > 0 ? (
-        <div className="bg-green-500/5 border border-green-500/20 rounded-xl p-4 mb-6">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-green-500/10 rounded-lg flex items-center justify-center shrink-0">
-              <TrendingUp className="w-5 h-5 text-green-400" strokeWidth={2} />
-            </div>
-            <div>
-              <p className="text-2xl font-bold font-mono text-green-400">
-                &pound;{savedAmount.toLocaleString()}
-              </p>
-              <p className="text-xs text-surface-600">
-                saved this month &mdash; {confirmedThisMonth || 0} confirmed appointment{confirmedThisMonth !== 1 ? 's' : ''} &times; &pound;{appointmentValue}
-              </p>
-            </div>
-          </div>
+  const savedSection = appointmentValue > 0 ? (
+    <div className="bg-green-500/5 border border-green-500/20 rounded-xl p-4 mb-6">
+      <div className="flex items-center gap-3">
+        <div className="w-10 h-10 bg-green-500/10 rounded-lg flex items-center justify-center shrink-0">
+          <TrendingUp className="w-5 h-5 text-green-400" strokeWidth={2} />
         </div>
+        <div>
+          <p className="text-2xl font-bold font-mono text-green-400">
+            &pound;{savedAmount.toLocaleString()}
+          </p>
+          <p className="text-xs text-surface-600">
+            saved this month &mdash; {confirmedThisMonth || 0} confirmed appointment{confirmedThisMonth !== 1 ? 's' : ''} &times; &pound;{appointmentValue}
+          </p>
+        </div>
+      </div>
+    </div>
+  ) : (
+    <Link
+      href="/settings"
+      className="block bg-surface-100 border border-surface-300 rounded-xl p-4 mb-6 hover:border-brand-500/50 transition-colors"
+    >
+      <div className="flex items-center gap-3">
+        <div className="w-10 h-10 bg-brand-500/10 rounded-lg flex items-center justify-center shrink-0">
+          <TrendingUp className="w-5 h-5 text-brand-500" strokeWidth={2} />
+        </div>
+        <div>
+          <p className="text-sm font-medium text-white">See how much Nudgle saves you</p>
+          <p className="text-xs text-surface-600">Set your average appointment value in settings</p>
+        </div>
+      </div>
+    </Link>
+  );
+
+  const trialDaysLeft = profile?.trial_ends_at
+    ? Math.max(0, Math.ceil((new Date(profile.trial_ends_at).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
+    : null;
+  const isOnTrial = profile?.plan === 'trial' && trialDaysLeft !== null && trialDaysLeft > 0;
+
+  const usageSection = profile && (
+    <div className="bg-surface-100 p-4 rounded-xl border border-surface-300 mb-6">
+      {isOnTrial ? (
+        <>
+          <div className="flex justify-between text-sm">
+            <span className="text-surface-600">Free trial</span>
+            <span className="font-medium font-mono text-white">
+              {trialDaysLeft} day{trialDaysLeft !== 1 ? 's' : ''} left
+            </span>
+          </div>
+          <div className="mt-2 h-1 bg-surface-300 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-brand-500 rounded-full transition-all"
+              style={{ width: `${Math.min(100, ((14 - (trialDaysLeft ?? 0)) / 14) * 100)}%` }}
+            />
+          </div>
+          <p className="mt-2 text-xs text-surface-500">
+            All features unlocked &mdash; no limits during trial
+          </p>
+        </>
       ) : (
-        <Link
-          href="/settings"
-          className="block bg-surface-100 border border-surface-300 rounded-xl p-4 mb-6 hover:border-brand-500/50 transition-colors"
-        >
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-brand-500/10 rounded-lg flex items-center justify-center shrink-0">
-              <TrendingUp className="w-5 h-5 text-brand-500" strokeWidth={2} />
-            </div>
-            <div>
-              <p className="text-sm font-medium text-white">See how much Nudgle saves you</p>
-              <p className="text-xs text-surface-600">Set your average appointment value in settings</p>
-            </div>
+        <>
+          <div className="flex justify-between text-sm">
+            <span className="text-surface-600">Appointments used</span>
+            <span className="font-medium font-mono text-white">
+              {profile.reminders_used_this_month}/{profile.reminders_limit}
+            </span>
           </div>
-        </Link>
+          <div className="mt-2 h-1 bg-surface-300 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-brand-500 rounded-full transition-all"
+              style={{
+                width: `${Math.min(
+                  (profile.reminders_used_this_month / profile.reminders_limit) * 100,
+                  100
+                )}%`,
+              }}
+            />
+          </div>
+        </>
       )}
+    </div>
+  );
 
-      {/* Week calendar */}
-      <div className="bg-surface-100 rounded-xl border border-surface-300 p-4 mb-6">
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-sm font-medium text-surface-600">This week</h2>
-          <span className="text-xs font-mono text-surface-500">
-            {confirmedCount}/{totalWeek} confirmed
-          </span>
-        </div>
-        <div className="grid grid-cols-7 gap-1">
-          {days.map((day, i) => {
-            const isToday = isSameDay(day.date, now);
-            const isPast = isBefore(day.date, today) && !isToday;
-            const dateStr = format(day.date, 'yyyy-MM-dd');
-            return (
-              <div key={i} className="flex flex-col">
-                {isPast ? (
-                  <div className="text-center py-1.5 rounded-lg mb-1">
-                    <p className="text-[10px] font-mono uppercase tracking-wider text-surface-500">
-                      {format(day.date, "EEE")}
-                    </p>
-                    <p className="text-base font-bold text-surface-500">
-                      {format(day.date, "d")}
-                    </p>
-                  </div>
-                ) : (
-                  <Link
-                    href={`/appointments/new?date=${dateStr}`}
-                    className={`text-center py-1.5 rounded-lg mb-1 transition-colors ${
-                      isToday ? "bg-brand-500 hover:bg-brand-600" : "hover:bg-surface-200"
-                    }`}
-                  >
-                    <p
-                      className={`text-[10px] font-mono uppercase tracking-wider ${
-                        isToday ? "text-white/70" : "text-surface-500"
-                      }`}
-                    >
-                      {format(day.date, "EEE")}
-                    </p>
-                    <p className={`text-base font-bold ${isToday ? "text-white" : "text-white"}`}>
-                      {format(day.date, "d")}
-                    </p>
-                  </Link>
-                )}
-                <div className="space-y-1 flex-1">
-                  {day.appointments.slice(0, 3).map((apt) => (
-                    <Link
-                      key={apt.id}
-                      href={`/appointments/${apt.id}`}
-                      className={`block p-1 rounded text-[10px] leading-tight ${
-                        apt.status === "confirmed"
-                          ? "bg-green-500/10 border border-green-500/20"
-                          : "bg-brand-500/10 border border-brand-500/20"
-                      } ${isPast ? "opacity-50" : ""}`}
-                    >
-                      <p
-                        className={`font-mono ${
-                          apt.status === "confirmed" ? "text-green-400" : "text-brand-400"
-                        }`}
-                      >
-                        {new Date(apt.appointment_time).toLocaleString("en-GB", { hour: "numeric", minute: "2-digit", hour12: true, timeZone: tz }).toLowerCase()}
-                      </p>
-                      <p className="text-white truncate">{apt.client_name.split(" ")[0]}</p>
-                    </Link>
-                  ))}
-                  {day.appointments.length > 3 && (
-                    <p className="text-[10px] text-surface-500 text-center font-mono">
-                      +{day.appointments.length - 3}
-                    </p>
-                  )}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Usage / Trial status */}
-      {profile && (
-        <div className="bg-surface-100 p-4 rounded-xl border border-surface-300 mb-8">
-          {profile.plan === 'trial' ? (
-            <>
-              <div className="flex justify-between text-sm">
-                <span className="text-surface-600">Free trial &mdash; appointments used</span>
-                <span className="font-medium font-mono text-white">
-                  {profile.reminders_used_this_month}/{profile.reminders_limit}
-                </span>
-              </div>
-              <div className="mt-2 h-1 bg-surface-300 rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-brand-500 rounded-full transition-all"
-                  style={{ width: `${Math.min((profile.reminders_used_this_month / profile.reminders_limit) * 100, 100)}%` }}
-                />
-              </div>
-              <p className="mt-2 text-xs text-surface-500">
-                All features unlocked during trial
-              </p>
-            </>
-          ) : (
-            <>
-              <div className="flex justify-between text-sm">
-                <span className="text-surface-600">Appointments used</span>
-                <span className="font-medium font-mono text-white">
-                  {profile.reminders_used_this_month}/{profile.reminders_limit}
-                </span>
-              </div>
-              <div className="mt-2 h-1 bg-surface-300 rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-brand-500 rounded-full transition-all"
-                  style={{
-                    width: `${Math.min(
-                      (profile.reminders_used_this_month / profile.reminders_limit) * 100,
-                      100
-                    )}%`,
-                  }}
-                />
-              </div>
-            </>
-          )}
-        </div>
-      )}
-
-      {/* WhatsApp booking link */}
+  const whatsappSection = (
+    <>
       {bookingLink && (
-        <div className="bg-surface-100 p-4 rounded-xl border border-green-500/20 mb-8 flex items-center gap-3">
+        <div className="bg-surface-100 p-4 rounded-xl border border-green-500/20 mb-6 flex items-center gap-3">
           <div className="w-9 h-9 bg-green-500/10 rounded-lg flex items-center justify-center shrink-0">
             <MessageSquare className="w-5 h-5 text-green-400" strokeWidth={2} />
           </div>
@@ -260,7 +213,7 @@ export default async function DashboardPage() {
       {!profile?.booking_enabled && (
         <Link
           href="/settings"
-          className="block bg-green-500/5 p-5 rounded-xl border border-green-500/20 mb-8 hover:border-green-500/40 transition-colors"
+          className="block bg-green-500/5 p-5 rounded-xl border border-green-500/20 mb-6 hover:border-green-500/40 transition-colors"
         >
           <div className="flex items-center gap-3 mb-3">
             <div className="w-10 h-10 bg-green-500/10 rounded-lg flex items-center justify-center shrink-0">
@@ -278,8 +231,11 @@ export default async function DashboardPage() {
           </div>
         </Link>
       )}
+    </>
+  );
 
-      {/* Today's appointments */}
+  const todaySection = (
+    <>
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-lg font-bold tracking-tight text-white">Today</h2>
         <Link
@@ -330,6 +286,46 @@ export default async function DashboardPage() {
           ))}
         </div>
       )}
+    </>
+  );
+
+  const calendarSection = (
+    <WeekCalendar
+      appointments={weekAppts}
+      googleEvents={googleEvents}
+      weekStartISO={weekMonday.toISOString()}
+      prevWeekHref={prevWeekHref}
+      nextWeekHref={nextWeekHref}
+      todayHref={todayHref}
+      isCurrentWeek={isCurrentWeek}
+      confirmedCount={confirmedCount}
+      totalWeek={totalWeek}
+      timezone={tz}
+    />
+  );
+
+  return (
+    <div className="max-w-2xl lg:max-w-6xl mx-auto px-4 pt-8">
+      {/* Greeting — full width */}
+      {greetingSection}
+
+      {/* Saved £X — full width */}
+      {savedSection}
+
+      {/* Desktop: two columns | Mobile: stack */}
+      <div className="lg:flex lg:gap-8">
+        {/* Calendar — left half on desktop */}
+        <div className="mb-6 lg:mb-0 lg:w-1/2 lg:sticky lg:top-20 lg:self-start">
+          {calendarSection}
+        </div>
+
+        {/* Right column */}
+        <div className="lg:w-1/2">
+          {usageSection}
+          {whatsappSection}
+          {todaySection}
+        </div>
+      </div>
     </div>
   );
 }

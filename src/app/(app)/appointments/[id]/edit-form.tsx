@@ -45,7 +45,39 @@ export function EditForm({ appointment }: { appointment: Appointment }) {
       return;
     }
 
-    const appointmentTime = new Date(`${date}T${time}`).toISOString();
+    const appointmentTime = new Date(`${date}T${time}`);
+    const appointmentEnd = new Date(appointmentTime.getTime() + parseInt(duration) * 60 * 1000);
+
+    // Check for overlapping appointments (exclude this one)
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const dayStart = new Date(`${date}T00:00:00`).toISOString();
+    const dayEnd = new Date(`${date}T23:59:59`).toISOString();
+
+    const { data: dayAppts } = await supabase
+      .from("appointments")
+      .select("id, client_name, appointment_time, duration_minutes")
+      .eq("user_id", user.id)
+      .neq("status", "cancelled")
+      .neq("id", appointment.id)
+      .gte("appointment_time", dayStart)
+      .lte("appointment_time", dayEnd);
+
+    const newStart = appointmentTime.getTime();
+    const newEnd = appointmentEnd.getTime();
+
+    const conflict = (dayAppts || []).find((apt) => {
+      const existStart = new Date(apt.appointment_time).getTime();
+      const existEnd = existStart + apt.duration_minutes * 60 * 1000;
+      return existStart < newEnd && newStart < existEnd;
+    });
+
+    if (conflict) {
+      setError(`This time overlaps with ${conflict.client_name}'s appointment`);
+      setLoading(false);
+      return;
+    }
 
     const { error: updateError } = await supabase
       .from("appointments")
@@ -53,7 +85,7 @@ export function EditForm({ appointment }: { appointment: Appointment }) {
         client_name: clientName,
         client_email: clientEmail || null,
         client_phone: clientPhone || null,
-        appointment_time: appointmentTime,
+        appointment_time: appointmentTime.toISOString(),
         duration_minutes: parseInt(duration),
       })
       .eq("id", appointment.id);
@@ -62,6 +94,15 @@ export function EditForm({ appointment }: { appointment: Appointment }) {
       setError(updateError.message);
       setLoading(false);
       return;
+    }
+
+    // Update Google Calendar event (fire and forget)
+    if (appointment.google_event_id) {
+      fetch("/api/google/calendar-event", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ appointmentId: appointment.id }),
+      }).catch(() => {});
     }
 
     setEditing(false);

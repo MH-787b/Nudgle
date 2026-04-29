@@ -30,7 +30,7 @@ export function AppNav() {
     <>
       {/* Desktop top nav */}
       <header className="hidden sm:block bg-surface-100 border-b border-surface-300">
-        <div className="max-w-5xl mx-auto px-4 flex items-center justify-between h-14">
+        <div className="max-w-6xl mx-auto px-4 flex items-center justify-between h-14">
           <div className="flex items-center gap-8">
             <Link href="/dashboard" className="flex items-center gap-2">
               <Bell className="w-5 h-5 text-brand-500" strokeWidth={2} />

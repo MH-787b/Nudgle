@@ -69,9 +69,9 @@ export default async function BillingPage() {
       <div className="bg-surface-100 p-6 rounded-xl border border-surface-300 mb-8">
         <div className="flex items-center justify-between mb-1">
           <p className="text-sm text-surface-600">Current plan</p>
-          {isOnTrial && (
+          {isOnTrial && trialDays !== null && (
             <div className="flex items-center gap-1.5 text-xs font-mono text-brand-400 bg-brand-500/10 px-2.5 py-1 rounded">
-              {profile.reminders_used_this_month}/{currentConfig.appointments} used
+              {trialDays} day{trialDays !== 1 ? 's' : ''} left
             </div>
           )}
         </div>
@@ -84,25 +84,47 @@ export default async function BillingPage() {
           )}
         </p>
 
-        {/* Usage bar */}
+        {/* Usage bar — days for trial, appointments for paid */}
         <div className="mt-4">
-          <div className="flex justify-between text-sm mb-1.5">
-            <span className="text-surface-600">Appointments used</span>
-            <span className="font-medium font-mono text-white">
-              {profile.reminders_used_this_month}/{currentConfig.appointments}
-            </span>
-          </div>
-          <div className="h-1 bg-surface-300 rounded-full overflow-hidden">
-            <div
-              className="h-full bg-brand-500 rounded-full"
-              style={{
-                width: `${Math.min(
-                  (profile.reminders_used_this_month / currentConfig.appointments) * 100,
-                  100
-                )}%`,
-              }}
-            />
-          </div>
+          {isOnTrial ? (
+            <>
+              <div className="flex justify-between text-sm mb-1.5">
+                <span className="text-surface-600">Trial period</span>
+                <span className="font-medium font-mono text-white">
+                  {trialDays} of 14 days
+                </span>
+              </div>
+              <div className="h-1 bg-surface-300 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-brand-500 rounded-full"
+                  style={{ width: `${Math.min(100, ((14 - (trialDays ?? 0)) / 14) * 100)}%` }}
+                />
+              </div>
+              <p className="mt-2 text-xs text-surface-500">
+                All features unlocked &mdash; no limits during trial
+              </p>
+            </>
+          ) : (
+            <>
+              <div className="flex justify-between text-sm mb-1.5">
+                <span className="text-surface-600">Appointments used</span>
+                <span className="font-medium font-mono text-white">
+                  {profile.reminders_used_this_month}/{currentConfig.appointments}
+                </span>
+              </div>
+              <div className="h-1 bg-surface-300 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-brand-500 rounded-full"
+                  style={{
+                    width: `${Math.min(
+                      (profile.reminders_used_this_month / currentConfig.appointments) * 100,
+                      100
+                    )}%`,
+                  }}
+                />
+              </div>
+            </>
+          )}
         </div>
 
         {profile.sms_used_this_month > 0 && currentConfig.smsCap > 0 && (

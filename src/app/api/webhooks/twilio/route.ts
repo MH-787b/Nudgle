@@ -7,6 +7,8 @@ import {
   handleConfirmation,
 } from "@/lib/booking/conversation";
 import type { Appointment, BusinessHour, ConversationContext, ConversationState } from "@/lib/types";
+import { getBusyTimes, createCalendarEvent } from "@/lib/google-calendar";
+import type { BusyPeriod } from "@/lib/google-calendar";
 
 function getSupabase() {
   return createClient(
@@ -161,7 +163,16 @@ async function handleWhatsApp(
     if (convo.state === "selecting_day") {
       // Fetch appointments for availability check
       const appointments = await getAppointmentsForWeek(supabase, business.id);
-      result = handleDaySelection(body, convo.context, hours as BusinessHour[], appointments, duration, timezone);
+
+      // Fetch Google Calendar busy times if connected and blocking is enabled
+      let busyPeriods: BusyPeriod[] = [];
+      if (business.google_calendar_connected && business.google_refresh_token && business.google_calendar_blocks_slots !== false) {
+        const now = new Date();
+        const weekLater = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+        busyPeriods = await getBusyTimes(business.google_refresh_token, now.toISOString(), weekLater.toISOString());
+      }
+
+      result = handleDaySelection(body, convo.context, hours as BusinessHour[], appointments, duration, timezone, busyPeriods);
     } else if (convo.state === "selecting_time") {
       result = handleTimeSelection(body, convo.context, duration, businessName);
     } else if (convo.state === "confirming") {
@@ -177,14 +188,36 @@ async function handleWhatsApp(
 
     // Create appointment if needed
     if (result.createAppointment) {
-      await supabase.from("appointments").insert({
+      const { data: newApt } = await supabase.from("appointments").insert({
         user_id: business.id,
         client_name: result.createAppointment.clientName,
         client_phone: result.createAppointment.clientPhone,
         appointment_time: result.createAppointment.appointmentTime,
         duration_minutes: result.createAppointment.durationMinutes,
         status: "confirmed",
-      });
+      }).select("id").single();
+
+      // Write to Google Calendar if connected
+      if (newApt && business.google_calendar_connected && business.google_refresh_token) {
+        const endTime = new Date(
+          new Date(result.createAppointment.appointmentTime).getTime() +
+          result.createAppointment.durationMinutes * 60 * 1000
+        ).toISOString();
+
+        const eventId = await createCalendarEvent(business.google_refresh_token, {
+          summary: `${result.createAppointment.clientName} - Appointment`,
+          description: "Booked via Nudgle (WhatsApp)",
+          start: result.createAppointment.appointmentTime,
+          end: endTime,
+          timeZone: timezone,
+        });
+
+        if (eventId) {
+          await supabase.from("appointments")
+            .update({ google_event_id: eventId })
+            .eq("id", newApt.id);
+        }
+      }
     }
 
     // Update conversation

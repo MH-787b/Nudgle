@@ -20,6 +20,7 @@ export default function NewAppointmentPage() {
   const [reminderMethod, setReminderMethod] = useState<"email" | "sms" | "whatsapp">("email");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [calendarWarning, setCalendarWarning] = useState<{ summary: string; start: string; end: string }[] | null>(null);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -40,21 +41,75 @@ export default function NewAppointmentPage() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
-    const appointmentTime = new Date(`${date}T${time}`).toISOString();
+    const appointmentTime = new Date(`${date}T${time}`);
+    const appointmentEnd = new Date(appointmentTime.getTime() + parseInt(duration) * 60 * 1000);
 
-    const { error: insertError } = await supabase.from("appointments").insert({
+    // Check for overlapping appointments
+    const dayStart = new Date(`${date}T00:00:00`).toISOString();
+    const dayEnd = new Date(`${date}T23:59:59`).toISOString();
+
+    const { data: dayAppts } = await supabase
+      .from("appointments")
+      .select("id, client_name, appointment_time, duration_minutes")
+      .eq("user_id", user.id)
+      .neq("status", "cancelled")
+      .gte("appointment_time", dayStart)
+      .lte("appointment_time", dayEnd);
+
+    const newStart = appointmentTime.getTime();
+    const newEnd = appointmentEnd.getTime();
+
+    const conflict = (dayAppts || []).find((apt) => {
+      const existStart = new Date(apt.appointment_time).getTime();
+      const existEnd = existStart + apt.duration_minutes * 60 * 1000;
+      return existStart < newEnd && newStart < existEnd;
+    });
+
+    if (conflict) {
+      setError(`This time overlaps with ${conflict.client_name}'s appointment`);
+      setLoading(false);
+      return;
+    }
+
+    // Check Google Calendar conflicts (skip if user already dismissed warning)
+    if (!calendarWarning) {
+      try {
+        const res = await fetch(
+          `/api/google/check-conflicts?start=${appointmentTime.toISOString()}&end=${appointmentEnd.toISOString()}`
+        );
+        const { conflicts } = await res.json();
+        if (conflicts && conflicts.length > 0) {
+          setCalendarWarning(conflicts);
+          setLoading(false);
+          return;
+        }
+      } catch {
+        // Silently continue if check fails
+      }
+    }
+
+    const { data: newApt, error: insertError } = await supabase.from("appointments").insert({
       user_id: user.id,
       client_name: clientName,
       client_email: clientEmail || null,
       client_phone: clientPhone || null,
-      appointment_time: appointmentTime,
+      appointment_time: appointmentTime.toISOString(),
       duration_minutes: parseInt(duration),
-    });
+    }).select("id").single();
 
     if (insertError) {
       setError(insertError.message);
       setLoading(false);
       return;
+    }
+
+    // Sync to Google Calendar (fire and forget)
+    if (newApt) {
+      fetch("/api/google/calendar-event", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ appointmentId: newApt.id }),
+      }).catch(() => {});
     }
 
     router.push("/appointments");
@@ -108,13 +163,13 @@ export default function NewAppointmentPage() {
             <label htmlFor="date" className="block text-sm font-medium text-surface-600 mb-1.5">
               Date *
             </label>
-            <input id="date" type="date" value={date} onChange={(e) => setDate(e.target.value)} className={inputClass} required />
+            <input id="date" type="date" value={date} onChange={(e) => { setDate(e.target.value); setCalendarWarning(null); }} className={inputClass} required />
           </div>
           <div>
             <label htmlFor="time" className="block text-sm font-medium text-surface-600 mb-1.5">
               Time *
             </label>
-            <input id="time" type="time" value={time} onChange={(e) => setTime(e.target.value)} className={inputClass} required />
+            <input id="time" type="time" value={time} onChange={(e) => { setTime(e.target.value); setCalendarWarning(null); }} className={inputClass} required />
           </div>
         </div>
 
@@ -163,13 +218,51 @@ export default function NewAppointmentPage() {
           </div>
         </div>
 
-        <button
-          type="submit"
-          disabled={loading}
-          className="w-full py-3 bg-brand-500 text-white rounded-lg font-semibold hover:bg-brand-600 active:scale-[0.98] transition-all disabled:opacity-50"
-        >
-          {loading ? "Adding..." : "Add appointment"}
-        </button>
+        {/* Google Calendar conflict warning */}
+        {calendarWarning && (
+          <div className="p-4 bg-amber-500/10 border border-amber-500/30 rounded-lg space-y-3">
+            <p className="text-sm font-medium text-amber-400">
+              This overlaps with your Google Calendar:
+            </p>
+            {calendarWarning.map((evt, i) => (
+              <div key={i} className="flex items-center gap-2 text-sm">
+                <div className="w-2 h-2 rounded-full bg-blue-400 shrink-0" />
+                <span className="text-white font-medium">{evt.summary}</span>
+                <span className="text-surface-500 font-mono text-xs">
+                  {new Date(evt.start).toLocaleTimeString("en-GB", { hour: "numeric", minute: "2-digit", hour12: true })}
+                  {" – "}
+                  {new Date(evt.end).toLocaleTimeString("en-GB", { hour: "numeric", minute: "2-digit", hour12: true })}
+                </span>
+              </div>
+            ))}
+            <div className="flex gap-2 pt-1">
+              <button
+                type="submit"
+                disabled={loading}
+                className="flex-1 py-2.5 bg-amber-500 text-white rounded-lg font-semibold text-sm hover:bg-amber-600 active:scale-[0.98] transition-all disabled:opacity-50"
+              >
+                {loading ? "Adding..." : "Add anyway"}
+              </button>
+              <button
+                type="button"
+                onClick={() => { setCalendarWarning(null); }}
+                className="px-4 py-2.5 bg-surface-100 text-surface-600 border border-surface-300 rounded-lg text-sm font-medium hover:text-white transition-colors"
+              >
+                Change time
+              </button>
+            </div>
+          </div>
+        )}
+
+        {!calendarWarning && (
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full py-3 bg-brand-500 text-white rounded-lg font-semibold hover:bg-brand-600 active:scale-[0.98] transition-all disabled:opacity-50"
+          >
+            {loading ? "Adding..." : "Add appointment"}
+          </button>
+        )}
       </form>
     </div>
   );

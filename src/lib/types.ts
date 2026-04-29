@@ -6,6 +6,7 @@ export interface Profile {
   phone: string | null;
   google_calendar_connected: boolean;
   google_refresh_token: string | null;
+  google_calendar_blocks_slots: boolean;
   onboarding_completed: boolean;
   reminders_active: boolean;
   gumroad_sale_id: string | null;
