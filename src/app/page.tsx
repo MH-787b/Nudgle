@@ -274,7 +274,7 @@ export default function Home() {
             <h3 className="font-bold text-white mb-1">Starter</h3>
             <p className="text-sm text-surface-600 mb-4">For solo &amp; small businesses</p>
             <div className="mb-6">
-              <span className="text-3xl font-bold font-mono text-white">&pound;39</span>
+              <span className="text-3xl font-bold font-mono text-white">&pound;29</span>
               <span className="text-surface-600">/mo</span>
             </div>
             <div className="space-y-2.5 mb-6">

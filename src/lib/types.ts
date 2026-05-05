@@ -127,7 +127,7 @@ export const PLAN_LIMITS: Record<PlanType, PlanConfig> = {
   },
   starter: {
     name: 'Starter',
-    price: 39,
+    price: 29,
     appointments: 500,
     channels: ['email', 'whatsapp', 'sms'],
     smsCap: 200,

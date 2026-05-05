@@ -244,3 +244,28 @@ body {
 .animate-loading-bar {
   animation: loading-bar 2s cubic-bezier(0.4, 0, 0.2, 1) forwards;
 }
+
+/* ── Dark scrollbars (all devices) ───────────────── */
+
+* {
+  scrollbar-color: #404040 transparent;
+  scrollbar-width: thin;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #404040;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #6b6b6b;
+}
