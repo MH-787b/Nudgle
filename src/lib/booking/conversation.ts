@@ -11,6 +11,7 @@ export interface HandleResult {
     clientPhone: string;
     appointmentTime: string;
     durationMinutes: number;
+    remindersOptIn: boolean;
   };
   restart?: boolean;
 }
@@ -135,25 +136,10 @@ export function handleConfirmation(
   const upper = body.trim().toUpperCase();
 
   if (upper === "YES" || upper === "Y" || upper === "CONFIRM") {
-    // Build a proper ISO timestamp with timezone
-    const dateStr = context.selectedDay!;
-    const timeStr = context.selectedTime!;
-    // Create the appointment time as an ISO string with timezone offset
-    const appointmentTime = toISOWithTz(dateStr, timeStr, timezone);
-
-    const dayLabel = context.days?.find((d) => d.date === context.selectedDay)?.label || context.selectedDay;
-    const timeLabel = context.slots?.find((s) => s.time === context.selectedTime)?.label || context.selectedTime;
-
     return {
-      reply: `Booked! ${businessName} will see you on ${dayLabel} at ${timeLabel}.\n\nYou'll get a reminder before your appointment.`,
-      state: "completed",
+      reply: "Would you like to receive a reminder before your appointment?\n\nReply YES or NO (default is YES).",
+      state: "asking_reminder",
       context,
-      createAppointment: {
-        clientName: context.clientName || "WhatsApp Booking",
-        clientPhone,
-        appointmentTime,
-        durationMinutes,
-      },
     };
   }
 
@@ -170,6 +156,44 @@ export function handleConfirmation(
     reply: "Reply YES to confirm your booking, or NO to start over.",
     state: "confirming",
     context,
+  };
+}
+
+/** Handle reminder opt-in question — create the appointment with the client's preference */
+export function handleReminderQuestion(
+  body: string,
+  context: ConversationContext,
+  durationMinutes: number,
+  businessName: string,
+  clientPhone: string,
+  timezone: string = "Europe/London"
+): HandleResult {
+  const upper = body.trim().toUpperCase();
+  const optOut = upper === "NO" || upper === "N";
+  const remindersOptIn = !optOut;
+
+  const dateStr = context.selectedDay!;
+  const timeStr = context.selectedTime!;
+  const appointmentTime = toISOWithTz(dateStr, timeStr, timezone);
+
+  const dayLabel = context.days?.find((d) => d.date === context.selectedDay)?.label || context.selectedDay;
+  const timeLabel = context.slots?.find((s) => s.time === context.selectedTime)?.label || context.selectedTime;
+
+  const reminderNote = remindersOptIn
+    ? "\n\nYou'll get a reminder before your appointment."
+    : "";
+
+  return {
+    reply: `Booked! ${businessName} will see you on ${dayLabel} at ${timeLabel}.${reminderNote}`,
+    state: "completed",
+    context,
+    createAppointment: {
+      clientName: context.clientName || "WhatsApp Booking",
+      clientPhone,
+      appointmentTime,
+      durationMinutes,
+      remindersOptIn,
+    },
   };
 }
 

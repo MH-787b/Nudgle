@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import twilio from "twilio";
 import {
   startConversation,
   handleDaySelection,
   handleTimeSelection,
   handleConfirmation,
+  handleReminderQuestion,
 } from "@/lib/booking/conversation";
 import type { Appointment, BusinessHour, ConversationContext, ConversationState } from "@/lib/types";
 import { getBusyTimes, createCalendarEvent } from "@/lib/google-calendar";
@@ -36,6 +38,26 @@ function emptyTwiml() {
 }
 
 export async function POST(request: NextRequest) {
+  // Verify Twilio webhook signature
+  const authToken = process.env.TWILIO_AUTH_TOKEN;
+  const signature = request.headers.get("x-twilio-signature") || "";
+
+  if (authToken && signature) {
+    const url = `${process.env.NEXT_PUBLIC_APP_URL || "https://nudgle.vercel.app"}/api/webhooks/twilio`;
+    const cloned = request.clone();
+    const formDataForValidation = await cloned.formData();
+    const params: Record<string, string> = {};
+    formDataForValidation.forEach((value, key) => {
+      params[key] = value.toString();
+    });
+
+    const isValid = twilio.validateRequest(authToken, signature, url, params);
+    if (!isValid) {
+      console.error("Twilio webhook: invalid signature");
+      return NextResponse.json({ error: "Invalid signature" }, { status: 403 });
+    }
+  }
+
   const supabase = getSupabase();
   const formData = await request.formData();
   const from = formData.get("From") as string;
@@ -177,6 +199,8 @@ async function handleWhatsApp(
       result = handleTimeSelection(body, convo.context, duration, businessName);
     } else if (convo.state === "confirming") {
       result = handleConfirmation(body, convo.context, duration, businessName, clientPhone, timezone);
+    } else if (convo.state === "asking_reminder") {
+      result = handleReminderQuestion(body, convo.context, duration, businessName, clientPhone, timezone);
     } else {
       return twiml("Sorry, something went wrong. Please try again.");
     }
@@ -195,6 +219,7 @@ async function handleWhatsApp(
         appointment_time: result.createAppointment.appointmentTime,
         duration_minutes: result.createAppointment.durationMinutes,
         status: "confirmed",
+        reminders_opt_in: result.createAppointment.remindersOptIn,
       }).select("id").single();
 
       // Write to Google Calendar if connected

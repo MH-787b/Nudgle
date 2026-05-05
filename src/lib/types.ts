@@ -37,6 +37,7 @@ export interface Appointment {
   google_event_id: string | null;
   reminder_24h_sent: boolean;
   reminder_2h_sent: boolean;
+  reminders_opt_in: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -86,7 +87,7 @@ export interface Conversation {
   updated_at: string;
 }
 
-export type ConversationState = 'selecting_day' | 'selecting_time' | 'confirming' | 'completed';
+export type ConversationState = 'selecting_day' | 'selecting_time' | 'confirming' | 'asking_reminder' | 'completed';
 
 export interface ConversationContext {
   days?: { date: string; label: string }[];

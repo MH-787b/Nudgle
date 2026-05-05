@@ -71,6 +71,7 @@ export async function GET(request: NextRequest) {
     .from("appointments")
     .select("*, profiles:user_id(*)")
     .eq("reminder_24h_sent", false)
+    .eq("reminders_opt_in", true)
     .neq("status", "cancelled")
     .gte("appointment_time", now.toISOString())
     .lte("appointment_time", in28h.toISOString());
@@ -200,6 +201,7 @@ export async function GET(request: NextRequest) {
     .select("*, profiles:user_id(*)")
     .eq("reminder_2h_sent", false)
     .eq("reminder_24h_sent", true)
+    .eq("reminders_opt_in", true)
     .neq("status", "cancelled")
     .neq("status", "confirmed")
     .gte("appointment_time", now.toISOString())
