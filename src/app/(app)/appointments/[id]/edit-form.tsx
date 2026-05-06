@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
-import { Mail, MessageSquare, Phone } from "lucide-react";
 import type { Appointment } from "@/lib/types";
 
 export function EditForm({ appointment }: { appointment: Appointment }) {
@@ -21,7 +20,6 @@ export function EditForm({ appointment }: { appointment: Appointment }) {
     })
   );
   const [duration, setDuration] = useState(String(appointment.duration_minutes));
-  const [reminderMethod, setReminderMethod] = useState<"email" | "sms" | "whatsapp">("email");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [editing, setEditing] = useState(false);
@@ -33,17 +31,6 @@ export function EditForm({ appointment }: { appointment: Appointment }) {
     e.preventDefault();
     setLoading(true);
     setError("");
-
-    if (reminderMethod === "email" && !clientEmail) {
-      setError("Client email is required for email reminders");
-      setLoading(false);
-      return;
-    }
-    if ((reminderMethod === "sms" || reminderMethod === "whatsapp") && !clientPhone) {
-      setError(`Client phone is required for ${reminderMethod === "sms" ? "SMS" : "WhatsApp"} reminders`);
-      setLoading(false);
-      return;
-    }
 
     const appointmentTime = new Date(`${date}T${time}`);
     const appointmentEnd = new Date(appointmentTime.getTime() + parseInt(duration) * 60 * 1000);
@@ -148,7 +135,7 @@ export function EditForm({ appointment }: { appointment: Appointment }) {
 
       <div>
         <label htmlFor="editClientEmail" className="block text-sm font-medium text-surface-600 mb-1.5">
-          Client email{reminderMethod === "email" ? " *" : ""}
+          Client email
         </label>
         <input
           id="editClientEmail"
@@ -161,7 +148,7 @@ export function EditForm({ appointment }: { appointment: Appointment }) {
 
       <div>
         <label htmlFor="editClientPhone" className="block text-sm font-medium text-surface-600 mb-1.5">
-          Client phone{reminderMethod !== "email" ? " *" : ""}
+          Client phone
         </label>
         <input
           id="editClientPhone"
@@ -219,37 +206,6 @@ export function EditForm({ appointment }: { appointment: Appointment }) {
           <option value="90">1.5 hours</option>
           <option value="120">2 hours</option>
         </select>
-      </div>
-
-      <div>
-        <label className="block text-sm font-medium text-surface-600 mb-1.5">
-          Remind via
-        </label>
-        <div className="grid grid-cols-3 gap-2">
-          {([
-            { value: "whatsapp" as const, label: "WhatsApp", icon: MessageSquare, comingSoon: true },
-            { value: "sms" as const, label: "SMS", icon: Phone, comingSoon: true },
-            { value: "email" as const, label: "Email", icon: Mail, comingSoon: false },
-          ]).map(({ value, label, icon: Icon, comingSoon }) => (
-            <button
-              key={value}
-              type="button"
-              onClick={() => !comingSoon && setReminderMethod(value)}
-              disabled={comingSoon}
-              className={`relative flex items-center justify-center gap-1.5 py-2.5 rounded-lg border text-sm font-medium transition-all ${
-                comingSoon
-                  ? "border-surface-300 bg-surface-100 text-surface-500 opacity-50 cursor-not-allowed"
-                  : reminderMethod === value
-                    ? "border-brand-500 bg-brand-500/10 text-white"
-                    : "border-surface-300 bg-surface-100 text-surface-500 hover:border-surface-400"
-              }`}
-            >
-              <Icon className="w-4 h-4" strokeWidth={2} />
-              {label}
-              {comingSoon && <span className="text-[9px] font-mono text-surface-500">Soon</span>}
-            </button>
-          ))}
-        </div>
       </div>
 
       <div className="flex gap-3">

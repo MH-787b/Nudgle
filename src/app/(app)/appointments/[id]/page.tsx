@@ -4,6 +4,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Appointment, Message } from "@/lib/types";
 import { CancelButton } from "./cancel-button";
+import { ConfirmButton } from "./confirm-button";
 import { EditForm } from "./edit-form";
 
 function formatTime(iso: string, tz: string) {
@@ -108,6 +109,9 @@ export default async function AppointmentDetailPage({
         {apt.status !== "cancelled" && (
           <div className="mt-4 pt-4 border-t border-surface-300 flex items-center gap-4">
             <EditForm appointment={apt} />
+            {apt.status !== "confirmed" && (
+              <ConfirmButton appointmentId={apt.id} />
+            )}
             <CancelButton appointmentId={apt.id} />
           </div>
         )}

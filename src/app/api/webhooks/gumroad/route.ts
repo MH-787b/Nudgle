@@ -64,15 +64,23 @@ export async function POST(request: NextRequest) {
   if (resourceName === "cancellation" || resourceName === "subscription_ended") {
     // Cancelled — downgrade to starter (lowest paid) with no active subscription
     // They keep access until current period ends (Gumroad handles this)
+    const downgradeData = {
+      plan: "starter" as const,
+      reminders_limit: PLAN_LIMITS.starter.appointments,
+      gumroad_subscription_id: null,
+    };
+
     if (subscriptionId) {
       await supabase
         .from("profiles")
-        .update({
-          plan: "starter",
-          reminders_limit: PLAN_LIMITS.starter.appointments,
-          gumroad_subscription_id: null,
-        })
+        .update(downgradeData)
         .eq("gumroad_subscription_id", subscriptionId);
+    } else if (matchValue) {
+      // Fallback: match by user ID or email if no subscription ID
+      await supabase
+        .from("profiles")
+        .update(downgradeData)
+        .eq(matchColumn, matchValue);
     }
   }
 

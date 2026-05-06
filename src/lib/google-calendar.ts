@@ -27,8 +27,13 @@ export async function getAccessToken(refreshToken: string): Promise<string | nul
     });
 
     const data = await response.json();
+    if (!response.ok) {
+      console.error("Google OAuth token refresh failed:", data.error || response.status);
+      return null;
+    }
     return data.access_token || null;
-  } catch {
+  } catch (err) {
+    console.error("Google OAuth token refresh error:", err);
     return null;
   }
 }
@@ -60,8 +65,13 @@ export async function getBusyTimes(
     );
 
     const data = await response.json();
+    if (!response.ok) {
+      console.error("Google FreeBusy API error:", data.error || response.status);
+      return [];
+    }
     return (data.calendars?.primary?.busy as BusyPeriod[]) || [];
-  } catch {
+  } catch (err) {
+    console.error("Google FreeBusy error:", err);
     return [];
   }
 }
@@ -133,7 +143,8 @@ export async function getCalendarEvents(
     }
 
     return allEvents;
-  } catch {
+  } catch (err) {
+    console.error("Google Calendar events fetch error:", err);
     return [];
   }
 }
@@ -166,8 +177,13 @@ export async function createCalendarEvent(
     );
 
     const data = await response.json();
+    if (!response.ok) {
+      console.error("Google Calendar create event error:", data.error || response.status);
+      return null;
+    }
     return data.id || null;
-  } catch {
+  } catch (err) {
+    console.error("Google Calendar create event error:", err);
     return null;
   }
 }
@@ -190,7 +206,8 @@ export async function deleteCalendarEvent(
     );
 
     return response.ok || response.status === 404;
-  } catch {
+  } catch (err) {
+    console.error("Google Calendar delete event error:", err);
     return false;
   }
 }
@@ -223,8 +240,13 @@ export async function updateCalendarEvent(
       }
     );
 
+    if (!response.ok) {
+      const data = await response.json().catch(() => ({}));
+      console.error("Google Calendar update event error:", data.error || response.status);
+    }
     return response.ok;
-  } catch {
+  } catch (err) {
+    console.error("Google Calendar update event error:", err);
     return false;
   }
 }

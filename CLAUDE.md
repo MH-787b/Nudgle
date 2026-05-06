@@ -2,6 +2,11 @@
 
 Appointment reminder SaaS for small service businesses. Reduces no-shows via email reminders + WhatsApp booking bot.
 
+## Code Rules
+
+- When creating a new function, always include a one-sentence explanation of what it does.
+- When creating a new function successfully, type "operation complete" in the CLI.
+
 ## Tech Stack
 
 - **Frontend:** Next.js 16 (App Router, TypeScript, Tailwind CSS v4)

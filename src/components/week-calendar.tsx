@@ -224,24 +224,28 @@ export function WeekCalendar({
     confirmed: {
       bg: "bg-green-500/15",
       border: "border-green-500/30",
+      leftBorder: "border-l-green-500",
       text: "text-green-400",
       title: "text-white",
     },
     pending: {
       bg: "bg-brand-500/15",
       border: "border-brand-500/30",
+      leftBorder: "border-l-brand-500",
       text: "text-brand-400",
       title: "text-white",
     },
     cancelled: {
       bg: "bg-red-500/10",
       border: "border-red-500/20",
+      leftBorder: "border-l-red-500/40",
       text: "text-red-400/60",
       title: "text-white/40",
     },
     google: {
       bg: "bg-blue-500/15",
       border: "border-blue-500/30",
+      leftBorder: "border-l-blue-500",
       text: "text-blue-400",
       title: "text-white/80",
     },
@@ -331,7 +335,7 @@ export function WeekCalendar({
 
       {/* Time grid */}
       <div
-        className={`overflow-auto ${
+        className={`overflow-auto week-cal-scroll ${
           isFullscreen ? "flex-1" : "max-h-[500px]"
         }`}
       >
@@ -404,8 +408,22 @@ export function WeekCalendar({
                   20
                 );
                 const colors = colorMap[block.type];
-                const widthPercent = 100 / block.totalColumns;
-                const leftPercent = block.column * widthPercent;
+                // Google Calendar-style cascading overlap layout:
+                // Events are staggered left-to-right with each one wider than an equal
+                // share. Earlier events sit behind later ones. Each event extends from
+                // its left offset to near the right edge, so text remains readable
+                // even with 3+ simultaneous events.
+                const n = block.totalColumns;
+                const col = block.column;
+                // Left offset: divide evenly but only across a portion of the width,
+                // leaving room for the last event to still be wide
+                const leftPercent = n > 1 ? col * (100 / (n + 0.5)) : 0;
+                // Width: each event stretches to the right edge minus a small inset,
+                // except the last column which fills to the edge
+                const isLastCol = col === n - 1;
+                const widthPercent = isLastCol
+                  ? 100 - leftPercent
+                  : 100 - leftPercent - 5; // 5% right inset so next column's left border is visible
                 const isExpanded = expandedId === block.id;
 
                 const statusLabel = block.type === "google"
@@ -450,7 +468,7 @@ export function WeekCalendar({
                 return (
                   <div
                     key={block.id}
-                    className={`group/event absolute rounded ${colors.bg} border ${colors.border} overflow-visible cursor-pointer ${
+                    className={`group/event absolute rounded-r rounded-l-sm ${colors.bg} border ${colors.border} border-l-2 ${colors.leftBorder} overflow-visible cursor-pointer ${
                       block.type === "cancelled" ? "opacity-40" : ""
                     }`}
                     style={{
@@ -459,7 +477,7 @@ export function WeekCalendar({
                       minHeight: "20px",
                       left: `calc(${leftPercent}% + 2px)`,
                       width: `calc(${widthPercent}% - 4px)`,
-                      zIndex: isExpanded ? 50 : block.type === "google" ? 1 : 2,
+                      zIndex: isExpanded ? 50 : (block.type === "google" ? 1 : 2) + block.column,
                     }}
                     onClick={(e) => {
                       e.preventDefault();
@@ -480,11 +498,11 @@ export function WeekCalendar({
                   >
                     {/* Compact view */}
                     <div className="px-1.5 py-0.5 h-full overflow-hidden">
-                      <p className={`text-[10px] font-semibold truncate ${colors.title}`}>
+                      <p className={`text-[11px] leading-tight font-semibold truncate ${colors.title}`}>
                         {block.title}
                       </p>
                       {height >= 32 && (
-                        <p className={`text-[9px] font-mono ${colors.text}`}>
+                        <p className={`text-[10px] font-mono ${colors.text} truncate`}>
                           {block.timeLabel}
                         </p>
                       )}

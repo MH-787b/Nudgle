@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { createClient as createAuthClient } from "@/lib/supabase/server";
 import { createClient } from "@supabase/supabase-js";
 import {
   createCalendarEvent,
@@ -13,8 +14,19 @@ function getSupabase() {
   );
 }
 
+async function getAuthenticatedUserId(): Promise<string | null> {
+  const authClient = await createAuthClient();
+  const { data: { user } } = await authClient.auth.getUser();
+  return user?.id || null;
+}
+
 // POST: Create a calendar event for an appointment
 export async function POST(request: NextRequest) {
+  const userId = await getAuthenticatedUserId();
+  if (!userId) {
+    return NextResponse.json({ created: false, reason: "unauthorized" }, { status: 401 });
+  }
+
   const { appointmentId } = await request.json();
   if (!appointmentId) {
     return NextResponse.json({ created: false, reason: "missing_id" });
@@ -26,6 +38,7 @@ export async function POST(request: NextRequest) {
     .from("appointments")
     .select("id, client_name, client_email, appointment_time, duration_minutes, user_id, google_event_id")
     .eq("id", appointmentId)
+    .eq("user_id", userId)
     .single();
 
   if (!apt) {
@@ -69,6 +82,11 @@ export async function POST(request: NextRequest) {
 
 // DELETE: Remove a calendar event when appointment is cancelled
 export async function DELETE(request: NextRequest) {
+  const userId = await getAuthenticatedUserId();
+  if (!userId) {
+    return NextResponse.json({ deleted: false, reason: "unauthorized" }, { status: 401 });
+  }
+
   const { appointmentId } = await request.json();
   if (!appointmentId) {
     return NextResponse.json({ deleted: false });
@@ -80,6 +98,7 @@ export async function DELETE(request: NextRequest) {
     .from("appointments")
     .select("google_event_id, user_id")
     .eq("id", appointmentId)
+    .eq("user_id", userId)
     .single();
 
   if (!apt?.google_event_id) {
@@ -110,6 +129,11 @@ export async function DELETE(request: NextRequest) {
 
 // PATCH: Update a calendar event when appointment is edited
 export async function PATCH(request: NextRequest) {
+  const userId = await getAuthenticatedUserId();
+  if (!userId) {
+    return NextResponse.json({ updated: false, reason: "unauthorized" }, { status: 401 });
+  }
+
   const { appointmentId } = await request.json();
   if (!appointmentId) {
     return NextResponse.json({ updated: false });
@@ -121,6 +145,7 @@ export async function PATCH(request: NextRequest) {
     .from("appointments")
     .select("id, client_name, client_email, appointment_time, duration_minutes, user_id, google_event_id")
     .eq("id", appointmentId)
+    .eq("user_id", userId)
     .single();
 
   if (!apt?.google_event_id) {

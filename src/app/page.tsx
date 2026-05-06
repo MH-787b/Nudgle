@@ -336,8 +336,11 @@ export default function Home() {
       </section>
 
       {/* Footer */}
-      <footer className="px-4 sm:px-8 py-8 text-sm text-surface-500 border-t border-surface-300 max-w-[1400px] mx-auto">
-        <span className="font-mono">&copy; 2026 Nudgle</span>
+      <footer className="px-4 sm:px-8 py-8 text-sm text-surface-500 border-t border-surface-300 max-w-[1400px] mx-auto flex items-center justify-between">
+        <span className="font-mono">&copy; 2026 Max Hulme trading as Nudgle</span>
+        <Link href="/privacy" className="text-surface-500 hover:text-white transition-colors font-mono">
+          Privacy Policy
+        </Link>
       </footer>
     </div>
   );

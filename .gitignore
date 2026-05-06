@@ -28,3 +28,14 @@ npm-debug.log*
 next-env.d.ts
 
 .vercel
+
+# env files (secrets)
+.env.vercel
+
+# personal notes
+SELFNOTES
+prompt.md
+
+# Claude Code local config
+.agents/
+.claude/

@@ -2,6 +2,15 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { deleteCalendarEvent } from "@/lib/google-calendar";
 
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
 function getSupabase() {
   return createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -98,7 +107,7 @@ function renderPage(title: string, message: string) {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${title} — Nudgle</title>
+  <title>${escapeHtml(title)} — Nudgle</title>
   <style>
     body { font-family: -apple-system, system-ui, sans-serif; background: #111; color: #fff; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; padding: 16px; }
     .card { max-width: 400px; text-align: center; }
@@ -109,8 +118,8 @@ function renderPage(title: string, message: string) {
 </head>
 <body>
   <div class="card">
-    <h1>${title}</h1>
-    <p>${message}</p>
+    <h1>${escapeHtml(title)}</h1>
+    <p>${escapeHtml(message)}</p>
     <p class="logo">Nudgle</p>
   </div>
 </body>
