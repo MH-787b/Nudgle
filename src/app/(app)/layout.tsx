@@ -28,7 +28,7 @@ export default async function AppLayout({
 
   // Auto-grant business plan to owner (skip payments for testing/admin)
   const ownerEmail = process.env.OWNER_EMAIL;
-  if (ownerEmail && profile && user.email === ownerEmail && profile.plan !== 'business') {
+  if (ownerEmail && profile && user.email?.toLowerCase() === ownerEmail.toLowerCase() && profile.plan !== 'business') {
     const admin = createServiceClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!

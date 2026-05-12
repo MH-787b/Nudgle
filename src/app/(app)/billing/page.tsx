@@ -11,10 +11,7 @@ function getTrialDaysLeft(trialEndsAt: string | null): number | null {
 }
 
 function getEffectivePlan(profile: Profile): PlanType {
-  if (profile.plan === 'trial') {
-    const days = getTrialDaysLeft(profile.trial_ends_at);
-    if (days !== null && days <= 0) return 'starter';
-  }
+  // Expired trial is NOT starter — it's expired. Don't pretend it's a paid plan.
   return profile.plan;
 }
 
@@ -60,6 +57,7 @@ export default async function BillingPage() {
   const effectivePlan = getEffectivePlan(profile);
   const currentConfig = PLAN_LIMITS[effectivePlan];
   const isOnTrial = profile.plan === 'trial' && trialDays !== null && trialDays > 0;
+  const isExpiredTrial = profile.plan === 'trial' && !isOnTrial;
 
   return (
     <div className="max-w-3xl mx-auto px-4 pt-8 pb-24">
@@ -76,8 +74,8 @@ export default async function BillingPage() {
           )}
         </div>
         <p className="text-2xl font-bold tracking-tight text-white">
-          {isOnTrial ? 'Free Trial' : currentConfig.name}
-          {!isOnTrial && effectivePlan !== 'trial' && (
+          {isExpiredTrial ? 'Trial Expired' : isOnTrial ? 'Free Trial' : currentConfig.name}
+          {!isOnTrial && !isExpiredTrial && effectivePlan !== 'trial' && (
             <span className="text-base font-normal text-surface-600 ml-2">
               &pound;{currentConfig.price}/mo
             </span>
@@ -86,7 +84,11 @@ export default async function BillingPage() {
 
         {/* Usage bar — days for trial, appointments for paid */}
         <div className="mt-4">
-          {isOnTrial ? (
+          {isExpiredTrial ? (
+            <p className="text-sm text-red-400">
+              Your trial has ended. Pick a plan below to continue using Nudgle.
+            </p>
+          ) : isOnTrial ? (
             <>
               <div className="flex justify-between text-sm mb-1.5">
                 <span className="text-surface-600">Trial period</span>
@@ -155,8 +157,8 @@ export default async function BillingPage() {
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {tiers.map((tier) => {
           const config = PLAN_LIMITS[tier.key];
-          const isCurrent = effectivePlan === tier.key || (isOnTrial && tier.key === 'starter');
-          const isUpgrade = tierOrder.indexOf(tier.key) > tierOrder.indexOf(effectivePlan);
+          const isCurrent = !isExpiredTrial && (effectivePlan === tier.key || (isOnTrial && tier.key === 'starter'));
+          const isUpgrade = isExpiredTrial || tierOrder.indexOf(tier.key) > tierOrder.indexOf(effectivePlan);
 
           return (
             <div
