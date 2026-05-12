@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
-import { Calendar, CheckCircle, Clock, Plus } from "lucide-react";
+import { Calendar, CheckCircle, Clock, Lock, Plus } from "lucide-react";
 import Link from "next/link";
+import { isTrialExpired } from "@/lib/types";
 import type { Appointment } from "@/lib/types";
 
 export default async function AppointmentsPage() {
@@ -17,26 +18,53 @@ export default async function AppointmentsPage() {
       .limit(50),
     supabase
       .from("profiles")
-      .select("timezone")
+      .select("timezone, plan, trial_ends_at")
       .eq("id", user!.id)
       .single(),
   ]);
 
   const tz = profile?.timezone || "Europe/London";
   const appointments = (data || []) as Appointment[];
+  const expired = isTrialExpired(profile?.plan || "trial", profile?.trial_ends_at || null);
 
   return (
     <div className="max-w-2xl mx-auto px-4 pt-8">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold tracking-tight text-white">Appointments</h1>
-        <Link
-          href="/appointments/new"
-          className="flex items-center gap-2 px-4 py-2 bg-brand-500 text-white rounded-lg font-medium text-sm hover:bg-brand-600 active:scale-[0.98] transition-all"
-        >
-          <Plus className="w-4 h-4" strokeWidth={2} />
-          Add new
-        </Link>
+        {expired ? (
+          <Link
+            href="/billing"
+            className="flex items-center gap-2 px-4 py-2 bg-surface-300 text-surface-500 rounded-lg font-medium text-sm"
+          >
+            <Lock className="w-4 h-4" strokeWidth={2} />
+            Trial ended
+          </Link>
+        ) : (
+          <Link
+            href="/appointments/new"
+            className="flex items-center gap-2 px-4 py-2 bg-brand-500 text-white rounded-lg font-medium text-sm hover:bg-brand-600 active:scale-[0.98] transition-all"
+          >
+            <Plus className="w-4 h-4" strokeWidth={2} />
+            Add new
+          </Link>
+        )}
       </div>
+
+      {expired && (
+        <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-4 mb-6 flex items-center gap-3">
+          <Lock className="w-5 h-5 text-red-400 shrink-0" strokeWidth={2} />
+          <div>
+            <p className="text-sm font-medium text-white">Your free trial has ended</p>
+            <p className="text-xs text-surface-600">Pick a plan to keep adding appointments and sending reminders.</p>
+          </div>
+          <Link
+            href="/billing"
+            className="shrink-0 px-3 py-1.5 bg-brand-500 text-white text-sm font-semibold rounded-lg hover:bg-brand-600 transition-colors"
+          >
+            Upgrade
+          </Link>
+        </div>
+      )}
 
       {appointments.length === 0 ? (
         <div className="bg-surface-100 p-12 rounded-xl border border-surface-300 text-center">

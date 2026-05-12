@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ArrowLeft, Mail, MessageSquare, Phone } from "lucide-react";
+import { ArrowLeft, Lock, Mail, MessageSquare, Phone } from "lucide-react";
 import Link from "next/link";
 import { PhoneInput } from "@/components/phone-input";
+import { isTrialExpired } from "@/lib/types";
 
 export default function NewAppointmentPage() {
   const [clientName, setClientName] = useState("");
@@ -21,6 +22,16 @@ export default function NewAppointmentPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [calendarWarning, setCalendarWarning] = useState<{ summary: string; start: string; end: string }[] | null>(null);
+  const [expired, setExpired] = useState(false);
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (!user) return;
+      supabase.from("profiles").select("plan, trial_ends_at").eq("id", user.id).single().then(({ data }) => {
+        if (data && isTrialExpired(data.plan, data.trial_ends_at)) setExpired(true);
+      });
+    });
+  }, [supabase]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -130,7 +141,23 @@ export default function NewAppointmentPage() {
 
       <h1 className="text-2xl font-bold tracking-tight text-white mb-6">New appointment</h1>
 
-      <form onSubmit={handleSubmit} className="space-y-4">
+      {expired && (
+        <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-6 text-center space-y-4">
+          <Lock className="w-8 h-8 text-red-400 mx-auto" strokeWidth={1.5} />
+          <div>
+            <p className="text-white font-semibold mb-1">Your free trial has ended</p>
+            <p className="text-sm text-surface-600">Pick a plan to keep adding appointments and sending reminders.</p>
+          </div>
+          <Link
+            href="/billing"
+            className="inline-block px-6 py-2.5 bg-brand-500 text-white rounded-lg font-semibold text-sm hover:bg-brand-600 active:scale-[0.98] transition-all"
+          >
+            Choose a plan
+          </Link>
+        </div>
+      )}
+
+      {!expired && <form onSubmit={handleSubmit} className="space-y-4">
         {error && (
           <div className="p-3 bg-red-500/10 border border-red-500/20 text-red-400 rounded-lg text-sm">
             {error}
@@ -263,7 +290,7 @@ export default function NewAppointmentPage() {
             {loading ? "Adding..." : "Add appointment"}
           </button>
         )}
-      </form>
+      </form>}
     </div>
   );
 }

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { sendReminder } from "@/lib/messaging";
-import { PLAN_LIMITS } from "@/lib/types";
+import { PLAN_LIMITS, isTrialExpired } from "@/lib/types";
 import type { PlanType, ReminderChannel } from "@/lib/types";
 
 function getSupabase() {
@@ -101,6 +101,12 @@ export async function GET(request: NextRequest) {
 
     if (!profile?.reminders_active) {
       aptDebug.skipped = "reminders_active is false or profile missing";
+      debug.push(aptDebug);
+      continue;
+    }
+
+    if (isTrialExpired(profile.plan, profile.trial_ends_at)) {
+      aptDebug.skipped = "trial expired — upgrade required";
       debug.push(aptDebug);
       continue;
     }
@@ -210,6 +216,7 @@ export async function GET(request: NextRequest) {
   for (const apt of appointments2h || []) {
     const profile = apt.profiles;
     if (!profile?.reminders_active) continue;
+    if (isTrialExpired(profile.plan, profile.trial_ends_at)) continue;
 
     const effectivePlan = getEffectivePlan(profile);
     const config = PLAN_LIMITS[effectivePlan];

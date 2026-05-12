@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAvailableSlots } from "@/lib/booking/availability";
 import { getBusyTimes } from "@/lib/google-calendar";
 import { sendEmail } from "@/lib/messaging/email";
+import { isTrialExpired } from "@/lib/types";
 import type { BusinessHour } from "@/lib/types";
 
 function getSupabase() {
@@ -24,12 +25,16 @@ export async function GET(req: NextRequest) {
 
   const { data: business } = await supabase
     .from("profiles")
-    .select("id, business_name, default_duration, timezone, google_calendar_connected, google_refresh_token, google_calendar_blocks_slots")
+    .select("id, business_name, default_duration, timezone, plan, trial_ends_at, google_calendar_connected, google_refresh_token, google_calendar_blocks_slots")
     .eq("booking_code", code)
     .eq("booking_enabled", true)
     .single();
 
   if (!business) return NextResponse.json({ error: "Business not found" }, { status: 404 });
+
+  if (isTrialExpired(business.plan, business.trial_ends_at)) {
+    return NextResponse.json({ error: "This business's booking page is temporarily unavailable." }, { status: 403 });
+  }
 
   const { data: hours } = await supabase
     .from("business_hours")
@@ -91,12 +96,16 @@ export async function POST(req: NextRequest) {
 
   const { data: business } = await supabase
     .from("profiles")
-    .select("id, business_name, default_duration, timezone, google_calendar_connected, google_refresh_token, google_calendar_blocks_slots")
+    .select("id, business_name, default_duration, timezone, plan, trial_ends_at, google_calendar_connected, google_refresh_token, google_calendar_blocks_slots")
     .eq("booking_code", code.toUpperCase())
     .eq("booking_enabled", true)
     .single();
 
   if (!business) return NextResponse.json({ error: "Business not found" }, { status: 404 });
+
+  if (isTrialExpired(business.plan, business.trial_ends_at)) {
+    return NextResponse.json({ error: "This business's booking page is temporarily unavailable." }, { status: 403 });
+  }
 
   const { data: hours } = await supabase
     .from("business_hours")

@@ -1,7 +1,8 @@
 import { createClient } from "@/lib/supabase/server";
 import { format, startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, addDays, isSameDay } from "date-fns";
-import { Calendar, CheckCircle, Clock, Plus, TrendingUp } from "lucide-react";
+import { Calendar, CheckCircle, Clock, Lock, Plus, TrendingUp } from "lucide-react";
 import Link from "next/link";
+import { isTrialExpired } from "@/lib/types";
 import type { Appointment } from "@/lib/types";
 import { WeekCalendar } from "@/components/week-calendar";
 import { getCalendarEvents, type GoogleEvent } from "@/lib/google-calendar";
@@ -144,6 +145,7 @@ export default async function DashboardPage({
     ? Math.max(0, Math.ceil((new Date(profile.trial_ends_at).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
     : null;
   const isOnTrial = profile?.plan === 'trial' && trialDaysLeft !== null && trialDaysLeft > 0;
+  const expired = isTrialExpired(profile?.plan || "trial", profile?.trial_ends_at || null);
 
   const usageSection = profile && (
     <div className="bg-surface-100 p-4 rounded-xl border border-surface-300 mb-6">
@@ -237,25 +239,44 @@ export default async function DashboardPage({
     <>
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-lg font-bold tracking-tight text-white">Today</h2>
-        <Link
-          href="/appointments/new"
-          className="flex items-center gap-1.5 text-sm text-brand-500 font-medium hover:text-brand-400 transition-colors"
-        >
-          <Plus className="w-4 h-4" strokeWidth={2} />
-          Add new
-        </Link>
+        {expired ? (
+          <Link
+            href="/billing"
+            className="flex items-center gap-1.5 text-sm text-surface-500 font-medium"
+          >
+            <Lock className="w-3.5 h-3.5" strokeWidth={2} />
+            Trial ended
+          </Link>
+        ) : (
+          <Link
+            href="/appointments/new"
+            className="flex items-center gap-1.5 text-sm text-brand-500 font-medium hover:text-brand-400 transition-colors"
+          >
+            <Plus className="w-4 h-4" strokeWidth={2} />
+            Add new
+          </Link>
+        )}
       </div>
 
       {appointments.length === 0 ? (
         <div className="bg-surface-100 p-8 rounded-xl border border-surface-300 text-center">
           <p className="text-surface-600 mb-4">No appointments today</p>
-          <Link
-            href="/appointments/new"
-            className="inline-flex items-center gap-2 px-4 py-2 bg-brand-500 text-white rounded-lg font-medium text-sm hover:bg-brand-600 active:scale-[0.98] transition-all"
-          >
-            <Plus className="w-4 h-4" strokeWidth={2} />
-            Add appointment
-          </Link>
+          {expired ? (
+            <Link
+              href="/billing"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-brand-500 text-white rounded-lg font-medium text-sm hover:bg-brand-600 active:scale-[0.98] transition-all"
+            >
+              Choose a plan
+            </Link>
+          ) : (
+            <Link
+              href="/appointments/new"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-brand-500 text-white rounded-lg font-medium text-sm hover:bg-brand-600 active:scale-[0.98] transition-all"
+            >
+              <Plus className="w-4 h-4" strokeWidth={2} />
+              Add appointment
+            </Link>
+          )}
         </div>
       ) : (
         <div className="space-y-2">

@@ -1,6 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { Clock, Calendar } from "lucide-react";
 import type { Metadata } from "next";
+import { isTrialExpired } from "@/lib/types";
 import type { BusinessHour } from "@/lib/types";
 import { BookingForm } from "./booking-form";
 
@@ -37,7 +38,7 @@ export default async function BookingPage({ params }: { params: Promise<{ code: 
 
   const { data: business } = await supabase
     .from("profiles")
-    .select("id, business_name, default_duration, booking_code, timezone")
+    .select("id, business_name, default_duration, booking_code, timezone, plan, trial_ends_at")
     .eq("booking_code", code.toUpperCase())
     .eq("booking_enabled", true)
     .single();
@@ -48,6 +49,17 @@ export default async function BookingPage({ params }: { params: Promise<{ code: 
         <div className="text-center">
           <h1 className="text-2xl font-bold text-white mb-2">Booking not found</h1>
           <p className="text-surface-600">This booking link isn&apos;t valid or has been disabled.</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (isTrialExpired(business.plan, business.trial_ends_at)) {
+    return (
+      <div className="min-h-[100dvh] bg-surface-900 flex items-center justify-center px-4">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-white mb-2">Booking unavailable</h1>
+          <p className="text-surface-600">Online booking for this business is temporarily unavailable. Please contact them directly.</p>
         </div>
       </div>
     );
