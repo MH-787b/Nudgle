@@ -15,7 +15,7 @@ function nowInTz(tz: string): Date {
 }
 
 /** Create a Date representing a specific date/time in a timezone, returned as UTC */
-function dateInTz(year: number, month: number, day: number, hours: number, minutes: number, tz: string): Date {
+export function dateInTz(year: number, month: number, day: number, hours: number, minutes: number, tz: string): Date {
   // Build an ISO-ish string and use the timezone to interpret it
   const pad = (n: number) => n.toString().padStart(2, "0");
   const dateStr = `${year}-${pad(month + 1)}-${pad(day)}T${pad(hours)}:${pad(minutes)}:00`;

@@ -20,8 +20,6 @@ export default async function SettingsPage() {
     .eq("user_id", user!.id)
     .order("day_of_week");
 
-  const whatsappNumber = process.env.TWILIO_WHATSAPP_NUMBER || "";
-
   return (
     <div className="max-w-lg mx-auto px-4 pt-8">
       <Link
@@ -35,7 +33,6 @@ export default async function SettingsPage() {
       <SettingsForm
         profile={profile}
         businessHours={(hours || []) as BusinessHour[]}
-        whatsappNumber={whatsappNumber}
       />
     </div>
   );

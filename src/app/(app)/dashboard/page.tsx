@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { format, startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, addDays, isSameDay } from "date-fns";
-import { CheckCircle, Clock, MessageSquare, Plus, TrendingUp } from "lucide-react";
+import { Calendar, CheckCircle, Clock, Plus, TrendingUp } from "lucide-react";
 import Link from "next/link";
 import type { Appointment } from "@/lib/types";
 import { WeekCalendar } from "@/components/week-calendar";
@@ -92,10 +92,9 @@ export default async function DashboardPage({
   const appointmentValue = profile?.average_appointment_value || 0;
   const savedAmount = (confirmedThisMonth || 0) * appointmentValue;
 
-  const whatsappNumber = process.env.TWILIO_WHATSAPP_NUMBER || "";
-  const cleanNumber = whatsappNumber.replace(/[^0-9]/g, "");
-  const bookingLink = profile?.booking_enabled && profile?.booking_code && cleanNumber
-    ? `https://wa.me/${cleanNumber}?text=BOOK%20${profile.booking_code}`
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://nudgle.vercel.app";
+  const bookingPageUrl = profile?.booking_enabled && profile?.booking_code
+    ? `${appUrl}/book/${profile.booking_code}`
     : null;
 
   // Shared sections as JSX
@@ -190,16 +189,16 @@ export default async function DashboardPage({
     </div>
   );
 
-  const whatsappSection = (
+  const bookingSection = (
     <>
-      {bookingLink && (
-        <div className="bg-surface-100 p-4 rounded-xl border border-green-500/20 mb-6 flex items-center gap-3">
-          <div className="w-9 h-9 bg-green-500/10 rounded-lg flex items-center justify-center shrink-0">
-            <MessageSquare className="w-5 h-5 text-green-400" strokeWidth={2} />
+      {bookingPageUrl && (
+        <div className="bg-surface-100 p-4 rounded-xl border border-brand-500/20 mb-6 flex items-center gap-3">
+          <div className="w-9 h-9 bg-brand-500/10 rounded-lg flex items-center justify-center shrink-0">
+            <Calendar className="w-5 h-5 text-brand-500" strokeWidth={2} />
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-white">WhatsApp booking is live</p>
-            <p className="text-xs text-surface-600 truncate">{bookingLink}</p>
+            <p className="text-sm font-medium text-white">Online booking is live</p>
+            <p className="text-xs text-surface-600 truncate">{bookingPageUrl}</p>
           </div>
           <Link
             href="/settings"
@@ -213,21 +212,21 @@ export default async function DashboardPage({
       {!profile?.booking_enabled && (
         <Link
           href="/settings"
-          className="block bg-green-500/5 p-5 rounded-xl border border-green-500/20 mb-6 hover:border-green-500/40 transition-colors"
+          className="block bg-brand-500/5 p-5 rounded-xl border border-brand-500/20 mb-6 hover:border-brand-500/40 transition-colors"
         >
           <div className="flex items-center gap-3 mb-3">
-            <div className="w-10 h-10 bg-green-500/10 rounded-lg flex items-center justify-center shrink-0">
-              <MessageSquare className="w-5 h-5 text-green-400" strokeWidth={2} />
+            <div className="w-10 h-10 bg-brand-500/10 rounded-lg flex items-center justify-center shrink-0">
+              <Calendar className="w-5 h-5 text-brand-500" strokeWidth={2} />
             </div>
             <div>
-              <p className="font-semibold text-white">Enable WhatsApp Booking</p>
+              <p className="font-semibold text-white">Enable Online Booking</p>
               <p className="text-xs text-surface-600">Your #1 tool to fill your calendar</p>
             </div>
           </div>
           <div className="space-y-1.5 ml-[52px]">
-            <p className="text-xs text-surface-500">Clients book via WhatsApp in 30 seconds &mdash; no app needed</p>
-            <p className="text-xs text-surface-500">98% message open rate vs 20% for email</p>
-            <p className="text-xs text-green-400/70 font-medium mt-2">Set up in Settings &rarr;</p>
+            <p className="text-xs text-surface-500">Clients book online in 30 seconds &mdash; no app needed</p>
+            <p className="text-xs text-surface-500">Share on Instagram, your website, or business card</p>
+            <p className="text-xs text-brand-400/70 font-medium mt-2">Set up in Settings &rarr;</p>
           </div>
         </Link>
       )}
@@ -322,7 +321,7 @@ export default async function DashboardPage({
         {/* Right column */}
         <div className="lg:w-1/2">
           {usageSection}
-          {whatsappSection}
+          {bookingSection}
           {todaySection}
         </div>
       </div>

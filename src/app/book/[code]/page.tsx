@@ -1,7 +1,8 @@
 import { createClient } from "@supabase/supabase-js";
-import { MessageSquare, Clock, Calendar } from "lucide-react";
+import { Clock, Calendar } from "lucide-react";
 import type { Metadata } from "next";
 import type { BusinessHour } from "@/lib/types";
+import { BookingForm } from "./booking-form";
 
 const DAY_NAMES = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 
@@ -26,7 +27,7 @@ export async function generateMetadata({ params }: { params: Promise<{ code: str
 
   return {
     title: `Book with ${name} — Nudgle`,
-    description: `Book an appointment with ${name} via WhatsApp. Pick a time, confirm, done.`,
+    description: `Book an appointment with ${name} online. Pick a time, confirm, done.`,
   };
 }
 
@@ -59,8 +60,6 @@ export default async function BookingPage({ params }: { params: Promise<{ code: 
     .order("day_of_week");
 
   const businessHours = (hours || []) as BusinessHour[];
-  const whatsappNumber = (process.env.TWILIO_WHATSAPP_NUMBER || "").replace(/[^0-9]/g, "");
-  const bookingLink = `https://wa.me/${whatsappNumber}?text=BOOK%20${business.booking_code}`;
   const businessName = business.business_name || "this business";
 
   return (
@@ -85,10 +84,13 @@ export default async function BookingPage({ params }: { params: Promise<{ code: 
               <span className="text-sm text-surface-600">{business.default_duration} minute appointment</span>
             </div>
 
-            {/* Business hours */}
-            <div>
-              <p className="text-xs font-medium text-surface-500 uppercase tracking-wider mb-2">Hours</p>
-              <div className="space-y-1">
+            {/* Business hours (collapsed) */}
+            <details className="group">
+              <summary className="text-xs font-medium text-surface-500 uppercase tracking-wider cursor-pointer hover:text-surface-400 transition-colors list-none flex items-center gap-1">
+                <span className="group-open:rotate-90 transition-transform text-surface-500">&#9654;</span>
+                Business hours
+              </summary>
+              <div className="space-y-1 mt-2">
                 {businessHours.map((h) => (
                   <div key={h.day_of_week} className="flex justify-between text-sm">
                     <span className={h.is_closed ? "text-surface-500" : "text-surface-600"}>
@@ -100,23 +102,16 @@ export default async function BookingPage({ params }: { params: Promise<{ code: 
                   </div>
                 ))}
               </div>
-            </div>
+            </details>
           </div>
 
-          {/* CTA */}
+          {/* Booking form */}
           <div className="px-6 pb-6">
-            <a
-              href={bookingLink}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center justify-center gap-2.5 w-full py-3.5 bg-[#25D366] text-white rounded-xl font-semibold text-base hover:bg-[#20bd5a] active:scale-[0.98] transition-all"
-            >
-              <MessageSquare className="w-5 h-5" strokeWidth={2} />
-              Book on WhatsApp
-            </a>
-            <p className="text-center text-xs text-surface-500 mt-3">
-              Opens WhatsApp — pick a day and time, confirm, done
-            </p>
+            <BookingForm
+              code={business.booking_code!}
+              businessName={businessName}
+              duration={business.default_duration}
+            />
           </div>
         </div>
 

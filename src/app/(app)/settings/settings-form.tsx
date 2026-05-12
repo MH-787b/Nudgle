@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
-import { Calendar, Check, Copy, Link2, MessageSquare, Globe } from "lucide-react";
+import { Calendar, Check, Copy, Link2, Globe } from "lucide-react";
 import type { BusinessHour } from "@/lib/types";
 
 const DAY_NAMES = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
@@ -66,10 +66,9 @@ interface Props {
     google_calendar_blocks_slots: boolean;
   } | null;
   businessHours: BusinessHour[];
-  whatsappNumber: string;
 }
 
-export function SettingsForm({ profile, businessHours, whatsappNumber }: Props) {
+export function SettingsForm({ profile, businessHours }: Props) {
   const router = useRouter();
   const supabase = createClient();
 
@@ -92,13 +91,9 @@ export function SettingsForm({ profile, businessHours, whatsappNumber }: Props) 
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [copied, setCopied] = useState<"wa" | "page" | false>(false);
+  const [copied, setCopied] = useState(false);
 
   const bookingCode = profile?.booking_code;
-  const cleanNumber = whatsappNumber.replace(/[^0-9]/g, "");
-  const bookingLink = bookingCode && cleanNumber
-    ? `https://wa.me/${cleanNumber}?text=BOOK%20${bookingCode}`
-    : null;
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://nudgle.vercel.app";
   const bookingPageUrl = bookingCode ? `${appUrl}/book/${bookingCode}` : null;
 
@@ -181,11 +176,10 @@ export function SettingsForm({ profile, businessHours, whatsappNumber }: Props) 
     }
   }
 
-  async function copyLink(type: "wa" | "page") {
-    const text = type === "wa" ? bookingLink : bookingPageUrl;
-    if (!text) return;
-    await navigator.clipboard.writeText(text);
-    setCopied(type);
+  async function copyLink() {
+    if (!bookingPageUrl) return;
+    await navigator.clipboard.writeText(bookingPageUrl);
+    setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   }
 
@@ -198,10 +192,10 @@ export function SettingsForm({ profile, businessHours, whatsappNumber }: Props) 
       <div className="bg-surface-100 rounded-xl border border-surface-300 p-5">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <MessageSquare className="w-5 h-5 text-brand-500" strokeWidth={2} />
+            <Calendar className="w-5 h-5 text-brand-500" strokeWidth={2} />
             <div>
-              <p className="font-semibold text-white">WhatsApp Booking</p>
-              <p className="text-sm text-surface-600">Let clients book via WhatsApp</p>
+              <p className="font-semibold text-white">Online Booking</p>
+              <p className="text-sm text-surface-600">Let clients book online via your booking page</p>
             </div>
           </div>
           <button
@@ -308,52 +302,27 @@ export function SettingsForm({ profile, businessHours, whatsappNumber }: Props) 
             </div>
           </div>
 
-          {/* Booking links */}
+          {/* Booking link */}
           {bookingCode && (
-            <div className="bg-surface-100 rounded-xl border border-brand-500/30 p-5 space-y-4">
-              <div>
-                <div className="flex items-center gap-2 mb-2">
-                  <Link2 className="w-4 h-4 text-brand-500" strokeWidth={2} />
-                  <p className="text-sm font-medium text-white">Your booking page</p>
-                </div>
-                <p className="text-xs text-surface-600 mb-2">
-                  Share this link — clients see your hours and book via WhatsApp
-                </p>
-                <div className="flex gap-2">
-                  <code className="flex-1 px-3 py-2 bg-surface-900 rounded-lg text-xs text-brand-400 overflow-x-auto font-mono">
-                    {bookingPageUrl}
-                  </code>
-                  <button
-                    onClick={() => copyLink("page")}
-                    className="px-3 py-2 bg-brand-500 text-white rounded-lg hover:bg-brand-600 active:scale-[0.98] transition-all shrink-0"
-                  >
-                    {copied === "page" ? <Check className="w-4 h-4" strokeWidth={2} /> : <Copy className="w-4 h-4" strokeWidth={2} />}
-                  </button>
-                </div>
+            <div className="bg-surface-100 rounded-xl border border-brand-500/30 p-5">
+              <div className="flex items-center gap-2 mb-2">
+                <Link2 className="w-4 h-4 text-brand-500" strokeWidth={2} />
+                <p className="text-sm font-medium text-white">Your booking page</p>
               </div>
-
-              {bookingLink && (
-                <div>
-                  <div className="flex items-center gap-2 mb-2">
-                    <MessageSquare className="w-4 h-4 text-[#25D366]" strokeWidth={2} />
-                    <p className="text-sm font-medium text-white">Direct WhatsApp link</p>
-                  </div>
-                  <p className="text-xs text-surface-600 mb-2">
-                    Opens WhatsApp directly — good for bio links
-                  </p>
-                  <div className="flex gap-2">
-                    <code className="flex-1 px-3 py-2 bg-surface-900 rounded-lg text-xs text-brand-400 overflow-x-auto font-mono">
-                      {bookingLink}
-                    </code>
-                    <button
-                      onClick={() => copyLink("wa")}
-                      className="px-3 py-2 bg-brand-500 text-white rounded-lg hover:bg-brand-600 active:scale-[0.98] transition-all shrink-0"
-                    >
-                      {copied === "wa" ? <Check className="w-4 h-4" strokeWidth={2} /> : <Copy className="w-4 h-4" strokeWidth={2} />}
-                    </button>
-                  </div>
-                </div>
-              )}
+              <p className="text-xs text-surface-600 mb-2">
+                Share this link on social media, your website, or business cards
+              </p>
+              <div className="flex gap-2">
+                <code className="flex-1 px-3 py-2 bg-surface-900 rounded-lg text-xs text-brand-400 overflow-x-auto font-mono">
+                  {bookingPageUrl}
+                </code>
+                <button
+                  onClick={copyLink}
+                  className="px-3 py-2 bg-brand-500 text-white rounded-lg hover:bg-brand-600 active:scale-[0.98] transition-all shrink-0"
+                >
+                  {copied ? <Check className="w-4 h-4" strokeWidth={2} /> : <Copy className="w-4 h-4" strokeWidth={2} />}
+                </button>
+              </div>
             </div>
           )}
 
@@ -361,14 +330,6 @@ export function SettingsForm({ profile, businessHours, whatsappNumber }: Props) 
             <p className="text-xs text-surface-500">
               Save settings to generate your booking link.
             </p>
-          )}
-
-          {!cleanNumber && (
-            <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg">
-              <p className="text-sm text-amber-400">
-                Set the TWILIO_WHATSAPP_NUMBER environment variable to enable WhatsApp booking.
-              </p>
-            </div>
           )}
         </>
       )}

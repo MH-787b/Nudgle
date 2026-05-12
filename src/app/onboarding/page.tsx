@@ -184,7 +184,7 @@ export default function OnboardingPage() {
             <div>
               <h2 className="text-2xl font-bold tracking-tight text-white">You&apos;re all set</h2>
               <p className="mt-2 text-surface-600">
-                Your 14-day free trial starts now. Nudgle will send reminders before each appointment &mdash; and clients can self-book via WhatsApp.
+                Your 14-day free trial starts now. Nudgle will send reminders before each appointment &mdash; and clients can self-book via your online booking page.
               </p>
             </div>
 
@@ -212,7 +212,7 @@ export default function OnboardingPage() {
               </div>
               <div className="border-t border-surface-300" />
               <div className="flex justify-between text-sm">
-                <span className="text-surface-600">WhatsApp booking</span>
+                <span className="text-surface-600">Online booking</span>
                 <span className="font-medium font-mono text-white">Ready to enable</span>
               </div>
             </div>
