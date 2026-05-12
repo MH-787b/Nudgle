@@ -149,7 +149,20 @@ export default async function DashboardPage({
 
   const usageSection = profile && (
     <div className="bg-surface-100 p-4 rounded-xl border border-surface-300 mb-6">
-      {isOnTrial ? (
+      {expired ? (
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm font-medium text-red-400">Trial expired</p>
+            <p className="text-xs text-surface-600 mt-0.5">Pick a plan to continue</p>
+          </div>
+          <Link
+            href="/billing"
+            className="px-3 py-1.5 bg-brand-500 text-white text-sm font-semibold rounded-lg hover:bg-brand-600 transition-colors"
+          >
+            Upgrade
+          </Link>
+        </div>
+      ) : isOnTrial ? (
         <>
           <div className="flex justify-between text-sm">
             <span className="text-surface-600">Free trial</span>
@@ -191,7 +204,7 @@ export default async function DashboardPage({
     </div>
   );
 
-  const bookingSection = (
+  const bookingSection = expired ? null : (
     <>
       {bookingPageUrl && (
         <div className="bg-surface-100 p-4 rounded-xl border border-brand-500/20 mb-6 flex items-center gap-3">
