@@ -248,7 +248,8 @@ export function SettingsForm({ profile, businessHours }: Props) {
 
           {/* Business hours */}
           <div>
-            <h2 className="text-sm font-medium text-surface-600 mb-3">Business hours</h2>
+            <h2 className="text-sm font-medium text-surface-600 mb-1">Business hours</h2>
+            <p className="text-xs text-surface-500 mb-3">Clients can book during these hours. Mark days you don&apos;t work as closed.</p>
             <div className="space-y-2">
               {hours.map((h) => (
                 <div

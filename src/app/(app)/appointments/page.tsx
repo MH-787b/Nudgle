@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { AlertTriangle, Calendar, CheckCircle, Clock, Lock, Plus } from "lucide-react";
+import { AlertTriangle, Calendar, CheckCircle, Clock, Link2, Lock, Plus } from "lucide-react";
 import Link from "next/link";
 import { isTrialExpired } from "@/lib/types";
 import type { Appointment } from "@/lib/types";
@@ -18,7 +18,7 @@ export default async function AppointmentsPage() {
       .limit(50),
     supabase
       .from("profiles")
-      .select("timezone, plan, trial_ends_at")
+      .select("timezone, plan, trial_ends_at, booking_enabled, booking_code")
       .eq("id", user!.id)
       .single(),
   ]);
@@ -26,6 +26,10 @@ export default async function AppointmentsPage() {
   const tz = profile?.timezone || "Europe/London";
   const appointments = (data || []) as Appointment[];
   const expired = isTrialExpired(profile?.plan || "trial", profile?.trial_ends_at || null);
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://nudgle.vercel.app";
+  const bookingUrl = profile?.booking_enabled && profile?.booking_code
+    ? `${appUrl}/book/${profile.booking_code}`
+    : null;
 
   return (
     <div className="max-w-2xl lg:max-w-6xl mx-auto px-4 pt-8">
@@ -49,6 +53,19 @@ export default async function AppointmentsPage() {
           </Link>
         )}
       </div>
+
+      {bookingUrl && !expired && (
+        <div className="bg-surface-100 p-3 rounded-xl border border-brand-500/20 mb-6 flex items-center gap-3">
+          <Link2 className="w-4 h-4 text-brand-500 shrink-0" strokeWidth={2} />
+          <code className="flex-1 text-xs text-brand-400 font-mono truncate">{bookingUrl}</code>
+          <Link
+            href="/settings"
+            className="text-xs font-medium text-surface-500 hover:text-white transition-colors shrink-0"
+          >
+            Manage
+          </Link>
+        </div>
+      )}
 
       {expired && (
         <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-4 mb-6 flex items-center gap-3">
