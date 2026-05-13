@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
-import { Calendar, Check, Copy, Link2, Globe } from "lucide-react";
+import { Calendar, Check, Copy, Link2, Globe, Mail, MessageSquare, Phone } from "lucide-react";
 import type { BusinessHour } from "@/lib/types";
 
 const DAY_NAMES = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
@@ -64,6 +64,7 @@ interface Props {
     average_appointment_value: number | null;
     google_calendar_connected: boolean;
     google_calendar_blocks_slots: boolean;
+    reminder_method: 'email' | 'sms' | 'whatsapp';
   } | null;
   businessHours: BusinessHour[];
 }
@@ -87,6 +88,7 @@ export function SettingsForm({ profile, businessHours }: Props) {
     }
     return DEFAULT_HOURS.map((h) => ({ ...h }));
   });
+  const [reminderMethod, setReminderMethod] = useState<'email' | 'sms' | 'whatsapp'>(profile?.reminder_method ?? "email");
   const [appointmentValue, setAppointmentValue] = useState(String(profile?.average_appointment_value ?? ""));
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -136,6 +138,7 @@ export function SettingsForm({ profile, businessHours }: Props) {
           timezone,
           average_appointment_value: isNaN(parsedValue) ? null : parsedValue,
           google_calendar_blocks_slots: calendarBlocksSlots,
+          reminder_method: reminderMethod,
         })
         .eq("id", user.id);
 
@@ -211,6 +214,37 @@ export function SettingsForm({ profile, businessHours }: Props) {
             />
           </button>
         </div>
+      </div>
+
+      {/* Reminder method */}
+      <div>
+        <label className="block text-sm font-medium text-surface-600 mb-1.5">
+          Remind clients via
+        </label>
+        <div className="grid grid-cols-3 gap-2">
+          {([
+            { value: "email" as const, label: "Email", icon: Mail },
+            { value: "whatsapp" as const, label: "WhatsApp", icon: MessageSquare },
+            { value: "sms" as const, label: "SMS", icon: Phone },
+          ]).map(({ value, label, icon: Icon }) => (
+            <button
+              key={value}
+              type="button"
+              onClick={() => setReminderMethod(value)}
+              className={`flex items-center justify-center gap-1.5 py-2.5 rounded-lg border text-sm font-medium transition-all ${
+                reminderMethod === value
+                  ? "border-brand-500 bg-brand-500/10 text-white"
+                  : "border-surface-300 bg-surface-100 text-surface-500 hover:border-surface-400"
+              }`}
+            >
+              <Icon className="w-4 h-4" strokeWidth={2} />
+              {label}
+            </button>
+          ))}
+        </div>
+        <p className="text-xs text-surface-500 mt-1.5">
+          Clients without a phone number will always receive email reminders
+        </p>
       </div>
 
       {bookingEnabled && (
