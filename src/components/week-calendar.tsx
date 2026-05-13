@@ -223,6 +223,7 @@ export function WeekCalendar({
   const colorMap = {
     confirmed: {
       bg: "bg-green-500/15",
+      hoverBg: "lg:group-hover/event:bg-green-700",
       border: "border-green-500/30",
       leftBorder: "border-l-green-500",
       text: "text-green-400",
@@ -230,6 +231,7 @@ export function WeekCalendar({
     },
     pending: {
       bg: "bg-brand-500/15",
+      hoverBg: "lg:group-hover/event:bg-brand-700",
       border: "border-brand-500/30",
       leftBorder: "border-l-brand-500",
       text: "text-brand-400",
@@ -237,6 +239,7 @@ export function WeekCalendar({
     },
     cancelled: {
       bg: "bg-red-500/10",
+      hoverBg: "lg:group-hover/event:bg-red-900",
       border: "border-red-500/20",
       leftBorder: "border-l-red-500/40",
       text: "text-red-400/60",
@@ -244,6 +247,7 @@ export function WeekCalendar({
     },
     google: {
       bg: "bg-blue-500/15",
+      hoverBg: "lg:group-hover/event:bg-blue-700",
       border: "border-blue-500/30",
       leftBorder: "border-l-blue-500",
       text: "text-blue-400",
@@ -458,7 +462,7 @@ export function WeekCalendar({
                 return (
                   <div
                     key={block.id}
-                    className={`group/event absolute rounded-r rounded-l-sm ${colors.bg} border ${colors.border} border-l-2 ${colors.leftBorder} overflow-visible cursor-pointer ${
+                    className={`group/event absolute rounded-r rounded-l-sm ${colors.bg} ${colors.hoverBg} border ${colors.border} border-l-2 ${colors.leftBorder} overflow-visible cursor-pointer transition-colors ${
                       block.type === "cancelled" ? "opacity-40" : ""
                     }`}
                     style={{
@@ -468,6 +472,14 @@ export function WeekCalendar({
                       left: `calc(${leftPercent}% + ${gap / 2}px)`,
                       width: `calc(${widthPercent}% - ${gap}px)`,
                       zIndex: isExpanded ? 50 : (block.type === "google" ? 1 : 2) + block.column,
+                    }}
+                    onMouseEnter={(e) => {
+                      const el = e.currentTarget;
+                      el.style.zIndex = "40";
+                    }}
+                    onMouseLeave={(e) => {
+                      const el = e.currentTarget;
+                      el.style.zIndex = String(isExpanded ? 50 : (block.type === "google" ? 1 : 2) + block.column);
                     }}
                     onClick={(e) => {
                       e.preventDefault();
