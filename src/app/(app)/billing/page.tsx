@@ -60,7 +60,7 @@ export default async function BillingPage() {
   const isExpiredTrial = profile.plan === 'trial' && !isOnTrial;
 
   return (
-    <div className="max-w-3xl mx-auto px-4 pt-8 pb-24">
+    <div className="max-w-3xl lg:max-w-6xl mx-auto px-4 pt-8 pb-24">
       <h1 className="text-2xl font-bold tracking-tight text-white mb-6">Billing</h1>
 
       {/* Current plan + trial banner */}

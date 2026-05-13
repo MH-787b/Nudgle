@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { ArrowLeft, CheckCircle, Clock, Mail, MessageSquare } from "lucide-react";
+import { AlertTriangle, ArrowLeft, CheckCircle, Clock, Mail, MessageSquare } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Appointment, Message } from "@/lib/types";
@@ -56,7 +56,7 @@ export default async function AppointmentDetailPage({
   const msgs = (messages || []) as Message[];
 
   return (
-    <div className="max-w-lg mx-auto px-4 pt-8">
+    <div className="max-w-lg lg:max-w-4xl mx-auto px-4 pt-8">
       <Link
         href="/appointments"
         className="inline-flex items-center gap-1.5 text-sm text-surface-600 hover:text-white transition-colors mb-6"
@@ -81,6 +81,11 @@ export default async function AppointmentDetailPage({
           ) : apt.status === "cancelled" ? (
             <span className="text-xs font-medium font-mono text-surface-500 bg-surface-300 px-2.5 py-1 rounded">
               Cancelled
+            </span>
+          ) : apt.status === "pending_approval" ? (
+            <span className="flex items-center gap-1.5 text-xs font-medium font-mono text-amber-400 bg-amber-500/10 px-2.5 py-1 rounded">
+              <AlertTriangle className="w-3.5 h-3.5" strokeWidth={2} />
+              Needs approval
             </span>
           ) : (
             <span className="flex items-center gap-1.5 text-xs font-medium font-mono text-amber-400 bg-amber-500/10 px-2.5 py-1 rounded">

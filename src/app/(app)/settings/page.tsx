@@ -21,7 +21,7 @@ export default async function SettingsPage() {
     .order("day_of_week");
 
   return (
-    <div className="max-w-lg mx-auto px-4 pt-8">
+    <div className="max-w-lg lg:max-w-4xl mx-auto px-4 pt-8">
       <Link
         href="/dashboard"
         className="inline-flex items-center gap-1.5 text-sm text-surface-600 hover:text-white transition-colors mb-6"

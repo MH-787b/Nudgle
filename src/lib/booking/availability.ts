@@ -59,7 +59,7 @@ export function getAvailableDays(
   return result;
 }
 
-/** Get available time slots for a specific date */
+/** Get available time slots for a specific date, marking Google Calendar conflicts */
 export function getAvailableSlots(
   dateStr: string,
   businessHours: BusinessHour[],
@@ -67,7 +67,7 @@ export function getAvailableSlots(
   durationMinutes: number,
   timezone: string = "Europe/London",
   busyPeriods: BusyPeriod[] = []
-): { time: string; label: string }[] {
+): { time: string; label: string; conflicted: boolean }[] {
   const [year, month, day] = dateStr.split("-").map(Number);
   const dateObj = new Date(year, month - 1, day);
   const dbDay = jsToDbDay(dateObj.getDay());
@@ -82,7 +82,7 @@ export function getAvailableSlots(
   const closeMinutes = closeH * 60 + closeM;
   const nowUtc = new Date();
 
-  const slots: { time: string; label: string }[] = [];
+  const slots: { time: string; label: string; conflicted: boolean }[] = [];
 
   for (let mins = openMinutes; mins + durationMinutes <= closeMinutes; mins += 30) {
     const slotH = Math.floor(mins / 60);
@@ -94,7 +94,7 @@ export function getAvailableSlots(
     // Skip slots in the past
     if (slotUtc <= nowUtc) continue;
 
-    // Check for conflicts with existing appointments
+    // Check for conflicts with existing Nudgle appointments (hard block — can't double-book)
     const slotEndUtc = new Date(slotUtc.getTime() + durationMinutes * 60 * 1000);
     const hasConflict = appointments.some((apt) => {
       if (apt.status === "cancelled") return false;
@@ -103,22 +103,27 @@ export function getAvailableSlots(
       return slotUtc < aptEnd && slotEndUtc > aptStart;
     });
 
+    // Hard conflicts with existing appointments are still filtered out
+    if (hasConflict) continue;
+
+    // Google Calendar conflicts are flagged but slot is still shown
+    // 30-min buffer on each side — slots near a calendar event also need approval
+    const BUFFER_MS = 30 * 60 * 1000;
     const hasBusyConflict = busyPeriods.some((busy) => {
-      const busyStart = new Date(busy.start);
-      const busyEnd = new Date(busy.end);
+      const busyStart = new Date(new Date(busy.start).getTime() - BUFFER_MS);
+      const busyEnd = new Date(new Date(busy.end).getTime() + BUFFER_MS);
       return slotUtc < busyEnd && slotEndUtc > busyStart;
     });
 
-    if (!hasConflict && !hasBusyConflict) {
-      const period = slotH >= 12 ? "PM" : "AM";
-      const displayH = slotH === 0 ? 12 : slotH > 12 ? slotH - 12 : slotH;
-      const displayM = slotM.toString().padStart(2, "0");
+    const period = slotH >= 12 ? "PM" : "AM";
+    const displayH = slotH === 0 ? 12 : slotH > 12 ? slotH - 12 : slotH;
+    const displayM = slotM.toString().padStart(2, "0");
 
-      slots.push({
-        time: `${slotH.toString().padStart(2, "0")}:${displayM}`,
-        label: `${displayH}:${displayM} ${period}`,
-      });
-    }
+    slots.push({
+      time: `${slotH.toString().padStart(2, "0")}:${displayM}`,
+      label: `${displayH}:${displayM} ${period}`,
+      conflicted: hasBusyConflict,
+    });
   }
 
   return slots;

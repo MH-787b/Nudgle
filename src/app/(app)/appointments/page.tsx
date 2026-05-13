@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { Calendar, CheckCircle, Clock, Lock, Plus } from "lucide-react";
+import { AlertTriangle, Calendar, CheckCircle, Clock, Lock, Plus } from "lucide-react";
 import Link from "next/link";
 import { isTrialExpired } from "@/lib/types";
 import type { Appointment } from "@/lib/types";
@@ -28,7 +28,7 @@ export default async function AppointmentsPage() {
   const expired = isTrialExpired(profile?.plan || "trial", profile?.trial_ends_at || null);
 
   return (
-    <div className="max-w-2xl mx-auto px-4 pt-8">
+    <div className="max-w-2xl lg:max-w-6xl mx-auto px-4 pt-8">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold tracking-tight text-white">Appointments</h1>
         {expired ? (
@@ -108,6 +108,11 @@ export default async function AppointmentsPage() {
                 ) : apt.status === "no_response" ? (
                   <span className="text-xs font-medium font-mono text-red-400 bg-red-500/10 px-2.5 py-1 rounded">
                     No response
+                  </span>
+                ) : apt.status === "pending_approval" ? (
+                  <span className="flex items-center gap-1.5 text-xs font-medium font-mono text-amber-400 bg-amber-500/10 px-2.5 py-1 rounded">
+                    <AlertTriangle className="w-3.5 h-3.5" strokeWidth={2} />
+                    Needs approval
                   </span>
                 ) : (
                   <span className="flex items-center gap-1.5 text-xs font-medium font-mono text-amber-400 bg-amber-500/10 px-2.5 py-1 rounded">

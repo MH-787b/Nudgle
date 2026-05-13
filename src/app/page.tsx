@@ -40,7 +40,7 @@ export default function Home() {
           <div className="animate-in delay-1">
             <div className="bg-surface-100 rounded-2xl overflow-hidden border border-surface-300 max-w-sm mx-auto lg:ml-auto shadow-2xl">
               {/* Header */}
-              <div className="bg-gradient-to-br from-brand-500 to-brand-700 px-5 py-5 text-center">
+              <div className="bg-brand-600 px-5 py-5 text-center">
                 <p className="text-sm font-semibold text-white">Fresh Cuts Barber</p>
                 <p className="text-xs text-white/70">Book your appointment in seconds</p>
               </div>
@@ -158,7 +158,7 @@ export default function Home() {
             <div className="space-y-3">
               {[
                 "Email reminders included on every plan",
-                "SMS & WhatsApp reminders coming soon",
+                "SMS & WhatsApp reminders included free",
                 "Clients confirm with a simple YES reply",
                 "See all confirmations at a glance on your dashboard",
               ].map((item) => (

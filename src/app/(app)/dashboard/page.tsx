@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { format, startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, addDays, isSameDay } from "date-fns";
-import { Calendar, CheckCircle, Clock, Lock, Plus, TrendingUp } from "lucide-react";
+import { AlertTriangle, Calendar, CheckCircle, Clock, Lock, Plus, TrendingUp } from "lucide-react";
 import Link from "next/link";
 import { isTrialExpired } from "@/lib/types";
 import type { Appointment } from "@/lib/types";
@@ -308,6 +308,11 @@ export default async function DashboardPage({
                 <span className="flex items-center gap-1.5 text-xs font-medium font-mono text-green-400 bg-green-500/10 px-2.5 py-1 rounded">
                   <CheckCircle className="w-3.5 h-3.5" strokeWidth={2} />
                   Confirmed
+                </span>
+              ) : apt.status === "pending_approval" ? (
+                <span className="flex items-center gap-1.5 text-xs font-medium font-mono text-amber-400 bg-amber-500/10 px-2.5 py-1 rounded">
+                  <AlertTriangle className="w-3.5 h-3.5" strokeWidth={2} />
+                  Needs approval
                 </span>
               ) : (
                 <span className="flex items-center gap-1.5 text-xs font-medium font-mono text-amber-400 bg-amber-500/10 px-2.5 py-1 rounded">

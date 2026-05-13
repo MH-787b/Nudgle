@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ArrowLeft, Calendar, Check, Clock, Loader2, User, Mail, Phone } from "lucide-react";
+import { ArrowLeft, Calendar, Check, Clock, Loader2, User, Mail, Phone, AlertTriangle } from "lucide-react";
 
 interface BookingFormProps {
   code: string;
@@ -9,15 +9,15 @@ interface BookingFormProps {
   duration: number;
 }
 
-type Step = "day" | "time" | "details" | "confirmed";
+type Step = "day" | "time" | "conflict-confirm" | "details" | "confirmed" | "requested";
 
 /** Interactive multi-step booking form for public booking pages. */
 export function BookingForm({ code, businessName, duration }: BookingFormProps) {
   const [step, setStep] = useState<Step>("day");
   const [days, setDays] = useState<{ date: string; label: string }[]>([]);
-  const [slots, setSlots] = useState<{ time: string; label: string }[]>([]);
+  const [slots, setSlots] = useState<{ time: string; label: string; conflicted?: boolean }[]>([]);
   const [selectedDay, setSelectedDay] = useState<{ date: string; label: string } | null>(null);
-  const [selectedSlot, setSelectedSlot] = useState<{ time: string; label: string } | null>(null);
+  const [selectedSlot, setSelectedSlot] = useState<{ time: string; label: string; conflicted?: boolean } | null>(null);
   const [clientName, setClientName] = useState("");
   const [clientEmail, setClientEmail] = useState("");
   const [clientPhone, setClientPhone] = useState("");
@@ -60,16 +60,26 @@ export function BookingForm({ code, businessName, duration }: BookingFormProps) 
     setLoading(false);
   }
 
+  function pickSlot(slot: { time: string; label: string; conflicted?: boolean }) {
+    setSelectedSlot(slot);
+    setError("");
+    if (slot.conflicted) {
+      setStep("conflict-confirm");
+    } else {
+      setStep("details");
+    }
+  }
+
   async function handleBook() {
     if (!clientName.trim()) {
       setError("Please enter your name");
       return;
     }
-    if (!clientEmail.trim() && !clientPhone.trim()) {
-      setError("Please enter your email or phone number");
+    if (!clientEmail.trim()) {
+      setError("Please enter your email address");
       return;
     }
-    if (clientEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(clientEmail)) {
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(clientEmail)) {
       setError("Please enter a valid email address");
       return;
     }
@@ -86,8 +96,9 @@ export function BookingForm({ code, businessName, duration }: BookingFormProps) 
           date: selectedDay!.date,
           time: selectedSlot!.time,
           clientName: clientName.trim(),
-          clientEmail: clientEmail.trim() || null,
+          clientEmail: clientEmail.trim(),
           clientPhone: clientPhone.trim() || null,
+          requestedConflict: selectedSlot!.conflicted || false,
         }),
       });
 
@@ -109,7 +120,12 @@ export function BookingForm({ code, businessName, duration }: BookingFormProps) 
       }
 
       setConfirmedDetails(data.appointment);
-      setStep("confirmed");
+      // If the appointment is pending approval, show request-sent state
+      if (data.pendingApproval) {
+        setStep("requested");
+      } else {
+        setStep("confirmed");
+      }
     } catch {
       setError("Something went wrong. Please try again.");
     }
@@ -122,9 +138,16 @@ export function BookingForm({ code, businessName, duration }: BookingFormProps) 
       setStep("day");
       setSelectedDay(null);
       setSlots([]);
-    } else if (step === "details") {
+    } else if (step === "conflict-confirm") {
       setStep("time");
       setSelectedSlot(null);
+    } else if (step === "details") {
+      if (selectedSlot?.conflicted) {
+        setStep("conflict-confirm");
+      } else {
+        setStep("time");
+        setSelectedSlot(null);
+      }
     }
   }
 
@@ -135,6 +158,47 @@ export function BookingForm({ code, businessName, duration }: BookingFormProps) 
     return (
       <div className="flex items-center justify-center py-12">
         <Loader2 className="w-6 h-6 text-brand-500 animate-spin" />
+      </div>
+    );
+  }
+
+  // Step: Request sent (pending owner approval)
+  if (step === "requested" && confirmedDetails) {
+    return (
+      <div className="text-center space-y-5">
+        <div className="w-14 h-14 bg-amber-500/15 rounded-xl flex items-center justify-center mx-auto">
+          <Clock className="w-7 h-7 text-amber-400" strokeWidth={2} />
+        </div>
+        <div>
+          <h2 className="text-xl font-bold text-white mb-1">Request sent!</h2>
+          <p className="text-sm text-surface-600">
+            {confirmedDetails.businessName || businessName} has been notified of your booking request. They&apos;ll confirm or suggest an alternative shortly.
+          </p>
+        </div>
+        <div className="bg-surface-100/50 border border-surface-300 rounded-xl p-4 text-left space-y-2">
+          <div className="flex justify-between text-sm">
+            <span className="text-surface-500">Date</span>
+            <span className="text-white font-medium">{selectedDay?.label}</span>
+          </div>
+          <div className="border-t border-surface-300" />
+          <div className="flex justify-between text-sm">
+            <span className="text-surface-500">Time</span>
+            <span className="text-white font-medium">{selectedSlot?.label}</span>
+          </div>
+          <div className="border-t border-surface-300" />
+          <div className="flex justify-between text-sm">
+            <span className="text-surface-500">Duration</span>
+            <span className="text-white font-medium">{confirmedDetails.duration} min</span>
+          </div>
+          <div className="border-t border-surface-300" />
+          <div className="flex justify-between text-sm">
+            <span className="text-surface-500">Status</span>
+            <span className="text-amber-400 font-medium">Awaiting approval</span>
+          </div>
+        </div>
+        <p className="text-xs text-surface-500">
+          You&apos;ll receive a confirmation email at {clientEmail} once approved
+        </p>
       </div>
     );
   }
@@ -168,11 +232,9 @@ export function BookingForm({ code, businessName, duration }: BookingFormProps) 
             <span className="text-white font-medium">{confirmedDetails.duration} min</span>
           </div>
         </div>
-        {clientEmail && (
-          <p className="text-xs text-surface-500">
-            A confirmation email has been sent to {clientEmail}
-          </p>
-        )}
+        <p className="text-xs text-surface-500">
+          A confirmation email has been sent to {clientEmail}
+        </p>
       </div>
     );
   }
@@ -251,18 +313,55 @@ export function BookingForm({ code, businessName, duration }: BookingFormProps) 
               {slots.map((slot) => (
                 <button
                   key={slot.time}
-                  onClick={() => {
-                    setSelectedSlot(slot);
-                    setStep("details");
-                    setError("");
-                  }}
-                  className="px-3 py-2.5 bg-surface-100/50 border border-surface-300 rounded-xl text-sm text-white font-medium hover:border-brand-500 hover:bg-brand-500/5 active:scale-[0.98] transition-all text-center"
+                  onClick={() => pickSlot(slot)}
+                  className={`px-3 py-2.5 border rounded-xl text-sm font-medium active:scale-[0.98] transition-all text-center ${
+                    slot.conflicted
+                      ? "bg-amber-500/10 border-amber-500/30 text-amber-300 hover:border-amber-400 hover:bg-amber-500/15"
+                      : "bg-surface-100/50 border-surface-300 text-white hover:border-brand-500 hover:bg-brand-500/5"
+                  }`}
                 >
                   {slot.label}
                 </button>
               ))}
             </div>
           )}
+        </>
+      )}
+
+      {/* Step: Confirm conflicted slot */}
+      {step === "conflict-confirm" && selectedSlot && (
+        <>
+          <div className="flex items-center gap-2 mb-1">
+            <AlertTriangle className="w-4 h-4 text-amber-400" strokeWidth={2} />
+            <h2 className="text-sm font-semibold text-white">Busy time slot</h2>
+          </div>
+
+          <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-xl space-y-3">
+            <p className="text-sm text-amber-200">
+              {businessName} may have an existing commitment at <strong>{selectedSlot.label}</strong> on <strong>{selectedDay?.label}</strong>.
+            </p>
+            <p className="text-sm text-surface-500">
+              You can still request this slot. {businessName} will review your request and confirm if they&apos;re available.
+            </p>
+          </div>
+
+          <div className="flex gap-2">
+            <button
+              onClick={goBack}
+              className="flex-1 py-3 bg-surface-100 border border-surface-300 text-white rounded-xl font-medium hover:bg-surface-200 active:scale-[0.98] transition-all text-sm"
+            >
+              Pick another time
+            </button>
+            <button
+              onClick={() => {
+                setStep("details");
+                setError("");
+              }}
+              className="flex-1 py-3 bg-amber-500 text-white rounded-xl font-medium hover:bg-amber-600 active:scale-[0.98] transition-all text-sm"
+            >
+              Request this slot
+            </button>
+          </div>
         </>
       )}
 
@@ -275,12 +374,22 @@ export function BookingForm({ code, businessName, duration }: BookingFormProps) 
           </div>
 
           {/* Summary bar */}
-          <div className="flex items-center gap-3 px-3 py-2 bg-brand-500/5 border border-brand-500/20 rounded-lg text-xs text-surface-600">
+          <div className={`flex items-center gap-3 px-3 py-2 border rounded-lg text-xs text-surface-600 ${
+            selectedSlot?.conflicted
+              ? "bg-amber-500/5 border-amber-500/20"
+              : "bg-brand-500/5 border-brand-500/20"
+          }`}>
             <span className="font-medium text-white">{selectedDay?.label}</span>
             <span>&middot;</span>
             <span className="font-medium text-white">{selectedSlot?.label}</span>
             <span>&middot;</span>
             <span>{duration} min</span>
+            {selectedSlot?.conflicted && (
+              <>
+                <span>&middot;</span>
+                <span className="text-amber-400 font-medium">Request</span>
+              </>
+            )}
           </div>
 
           <div className="space-y-3">
@@ -301,7 +410,7 @@ export function BookingForm({ code, businessName, duration }: BookingFormProps) 
             <div>
               <label className="flex items-center gap-1.5 text-xs font-medium text-surface-500 mb-1.5">
                 <Mail className="w-3 h-3" strokeWidth={2} />
-                Email
+                Email *
               </label>
               <input
                 type="email"
@@ -324,19 +433,25 @@ export function BookingForm({ code, businessName, duration }: BookingFormProps) 
                 className={inputClass}
               />
             </div>
-            <p className="text-xs text-surface-500">Email or phone required so we can send you a reminder</p>
+            <p className="text-xs text-surface-500">We&apos;ll send booking confirmations and reminders to your email</p>
           </div>
 
           <button
             onClick={handleBook}
             disabled={loading}
-            className="w-full py-3.5 bg-brand-500 text-white rounded-xl font-semibold hover:bg-brand-600 active:scale-[0.98] transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+            className={`w-full py-3.5 text-white rounded-xl font-semibold active:scale-[0.98] transition-all disabled:opacity-50 flex items-center justify-center gap-2 ${
+              selectedSlot?.conflicted
+                ? "bg-amber-500 hover:bg-amber-600"
+                : "bg-brand-500 hover:bg-brand-600"
+            }`}
           >
             {loading ? (
               <>
                 <Loader2 className="w-4 h-4 animate-spin" />
-                Booking...
+                {selectedSlot?.conflicted ? "Requesting..." : "Booking..."}
               </>
+            ) : selectedSlot?.conflicted ? (
+              "Request slot"
             ) : (
               "Confirm booking"
             )}

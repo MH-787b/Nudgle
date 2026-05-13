@@ -78,25 +78,25 @@ export async function GET(req: NextRequest) {
     busyPeriods
   );
 
-  return NextResponse.json({ slots });
+  return NextResponse.json({ slots, calendarBlocking: business.google_calendar_blocks_slots && business.google_calendar_connected });
 }
 
 export async function POST(req: NextRequest) {
   const body = await req.json();
-  const { code, date, time, clientName, clientEmail, clientPhone } = body;
+  const { code, date, time, clientName, clientEmail, clientPhone, requestedConflict } = body;
 
   if (!code || !date || !time || !clientName) {
     return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
   }
-  if (!clientEmail && !clientPhone) {
-    return NextResponse.json({ error: "Email or phone is required" }, { status: 400 });
+  if (!clientEmail) {
+    return NextResponse.json({ error: "Email is required" }, { status: 400 });
   }
 
   const supabase = getSupabase();
 
   const { data: business } = await supabase
     .from("profiles")
-    .select("id, business_name, default_duration, timezone, plan, trial_ends_at, google_calendar_connected, google_refresh_token, google_calendar_blocks_slots")
+    .select("id, email, business_name, default_duration, timezone, plan, trial_ends_at, google_calendar_connected, google_refresh_token, google_calendar_blocks_slots")
     .eq("booking_code", code.toUpperCase())
     .eq("booking_enabled", true)
     .single();
@@ -141,10 +141,13 @@ export async function POST(req: NextRequest) {
     busyPeriods
   );
 
-  const slotExists = availableSlots.some((s) => s.time === time);
-  if (!slotExists) {
+  const matchedSlot = availableSlots.find((s) => s.time === time);
+  if (!matchedSlot) {
     return NextResponse.json({ error: "This time slot is no longer available. Please pick another time." }, { status: 409 });
   }
+
+  // Trust backend conflict check, but fall back to frontend flag if Google API failed
+  const isConflicted = matchedSlot.conflicted || (requestedConflict === true && busyPeriods.length === 0);
 
   // Build the appointment time in the business timezone
   const { dateInTz } = await import("@/lib/booking/availability");
@@ -161,7 +164,7 @@ export async function POST(req: NextRequest) {
       client_phone: clientPhone?.trim() || null,
       appointment_time: appointmentTimeUtc.toISOString(),
       duration_minutes: business.default_duration,
-      status: "confirmed",
+      status: isConflicted ? "pending_approval" : "confirmed",
     })
     .select("id")
     .single();
@@ -170,71 +173,134 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Failed to create booking" }, { status: 500 });
   }
 
-  // Sync to Google Calendar (fire and forget)
-  if (newApt && business.google_calendar_connected && business.google_refresh_token) {
-    import("@/lib/google-calendar").then(({ createCalendarEvent }) =>
-      createCalendarEvent(business.google_refresh_token!, {
-        summary: `${clientName.trim()} (via Nudgle)`,
-        start: appointmentTimeUtc.toISOString(),
-        end: new Date(appointmentTimeUtc.getTime() + business.default_duration * 60 * 1000).toISOString(),
-        timeZone: business.timezone,
-      }).then((eventId) => {
-        if (eventId) {
-          supabase.from("appointments").update({ google_event_id: eventId }).eq("id", newApt.id).then(() => {});
-        }
-      }).catch(() => {})
-    );
-  }
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://nudgle.vercel.app";
+  const bName = business.business_name || "your appointment";
+  const displayDate = new Date(appointmentTimeUtc).toLocaleDateString("en-GB", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    timeZone: business.timezone,
+  });
+  const displayTime = new Date(appointmentTimeUtc).toLocaleTimeString("en-GB", {
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+    timeZone: business.timezone,
+  });
 
-  // Send confirmation email (fire and forget)
-  if (clientEmail) {
-    const businessName = business.business_name || "your appointment";
-    const displayDate = new Date(appointmentTimeUtc).toLocaleDateString("en-GB", {
-      weekday: "long",
-      day: "numeric",
-      month: "long",
-      timeZone: business.timezone,
-    });
-    const displayTime = new Date(appointmentTimeUtc).toLocaleTimeString("en-GB", {
-      hour: "numeric",
-      minute: "2-digit",
-      hour12: true,
-      timeZone: business.timezone,
-    });
+  if (isConflicted) {
+    // --- Conflicted slot: email owner for approval, notify client ---
+    console.log("[book] Conflicted slot — sending approval email to owner:", business.email, "| apt:", newApt.id);
 
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://nudgle.vercel.app";
+    // Email the business owner with approve/reject buttons
+    if (business.email) {
+      const ownerResult = await sendEmail(
+        business.email,
+        `Booking request — ${clientName.trim()} wants ${displayDate} at ${displayTime}`,
+        `Hi,\n\n${clientName.trim()} has requested a booking during a time you have an existing calendar event.\n\n${displayDate} at ${displayTime} (${business.default_duration} min)\n\nClient: ${clientName.trim()}\nEmail: ${clientEmail.trim()}${clientPhone ? `\nPhone: ${clientPhone.trim()}` : ""}\n\nApprove or reject this request:\nApprove: ${appUrl}/api/approve/${newApt.id}?response=approve\nReject: ${appUrl}/api/approve/${newApt.id}?response=reject\n\nIf you don't respond, this request will be automatically declined.\n\nPowered by Nudgle`,
+        `<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 480px; margin: 0 auto; padding: 32px 20px;">
+          <h2 style="margin: 0 0 8px; font-size: 20px; color: #111;">Booking request</h2>
+          <p style="margin: 0 0 4px; color: #666; font-size: 14px;"><strong style="color: #111;">${clientName.trim()}</strong> wants to book during a time you have a calendar event.</p>
+          <p style="margin: 0 0 24px; color: #999; font-size: 13px;">Review and approve or reject this request.</p>
+          <div style="background: #fffbeb; border: 1px solid #fbbf24; border-radius: 12px; padding: 20px; margin-bottom: 24px;">
+            <p style="margin: 0 0 8px; font-size: 16px; color: #111; font-weight: 600;">${displayDate}</p>
+            <p style="margin: 0 0 8px; font-size: 14px; color: #666;">${displayTime} &middot; ${business.default_duration} minutes</p>
+            <p style="margin: 0; font-size: 14px; color: #666;">Client: ${clientName.trim()} &middot; ${clientEmail.trim()}${clientPhone ? ` &middot; ${clientPhone.trim()}` : ""}</p>
+          </div>
+          <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin-bottom: 24px;">
+            <tr>
+              <td align="center">
+                <a href="${appUrl}/api/approve/${newApt.id}?response=approve" style="display: block; width: 100%; padding: 14px; background: #22c55e; color: white; text-decoration: none; border-radius: 10px; font-weight: 600; font-size: 15px; text-align: center; box-sizing: border-box;">Approve booking</a>
+              </td>
+            </tr>
+            <tr><td height="10"></td></tr>
+            <tr>
+              <td align="center">
+                <a href="${appUrl}/api/approve/${newApt.id}?response=reject" style="display: block; width: 100%; padding: 14px; background: #ef4444; color: white; text-decoration: none; border-radius: 10px; font-weight: 600; font-size: 15px; text-align: center; box-sizing: border-box;">Reject request</a>
+              </td>
+            </tr>
+          </table>
+          <p style="margin: 0; font-size: 12px; color: #999; text-align: center;">If you don't respond, this request will be automatically declined.</p>
+          <p style="margin: 8px 0 0; font-size: 12px; color: #999; text-align: center;">Powered by <a href="${appUrl}" style="color: #999;">Nudgle</a></p>
+        </div>`
+      );
+      console.log("[book] Owner email result:", ownerResult);
+    } else {
+      console.error("[book] No business.email found — cannot send approval email");
+    }
 
-    sendEmail(
+    // Send "request received" email to client
+    const clientResult = await sendEmail(
       clientEmail.trim(),
-      `Booking confirmed — ${businessName}`,
-      `Hi ${clientName.trim()},\n\nYour appointment with ${businessName} is confirmed:\n\n${displayDate} at ${displayTime}\n${business.default_duration} minutes\n\nNeed to cancel? Reply to this email or contact ${businessName} directly.\n\nPowered by Nudgle`,
+      `Booking request received — ${bName}`,
+      `Hi ${clientName.trim()},\n\nYour booking request with ${bName} has been received:\n\n${displayDate} at ${displayTime}\n${business.default_duration} minutes\n\nThis time slot needs approval from ${bName}. You'll receive a confirmation email once they've reviewed your request.\n\nPowered by Nudgle`,
       `<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 480px; margin: 0 auto; padding: 32px 20px;">
-        <h2 style="margin: 0 0 8px; font-size: 20px; color: #111;">Booking confirmed</h2>
-        <p style="margin: 0 0 24px; color: #666; font-size: 14px;">Your appointment with <strong style="color: #111;">${businessName}</strong></p>
-        <div style="background: #f8f8f8; border-radius: 12px; padding: 20px; margin-bottom: 24px;">
+        <h2 style="margin: 0 0 8px; font-size: 20px; color: #111;">Request received</h2>
+        <p style="margin: 0 0 24px; color: #666; font-size: 14px;">Your booking request with <strong style="color: #111;">${bName}</strong> is being reviewed.</p>
+        <div style="background: #fffbeb; border: 1px solid #fbbf24; border-radius: 12px; padding: 20px; margin-bottom: 24px;">
           <p style="margin: 0 0 8px; font-size: 16px; color: #111; font-weight: 600;">${displayDate}</p>
           <p style="margin: 0 0 4px; font-size: 14px; color: #666;">${displayTime} &middot; ${business.default_duration} minutes</p>
+          <p style="margin: 8px 0 0; font-size: 13px; color: #b45309; font-weight: 500;">Awaiting approval</p>
         </div>
-        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin-bottom: 24px;">
-          <tr>
-            <td align="center">
-              <a href="${appUrl}/api/confirm/${newApt.id}?response=yes" style="display: block; width: 100%; padding: 14px; background: #22c55e; color: white; text-decoration: none; border-radius: 10px; font-weight: 600; font-size: 15px; text-align: center; box-sizing: border-box;">Yes, I'll be there</a>
-            </td>
-          </tr>
-          <tr><td height="10"></td></tr>
-          <tr>
-            <td align="center">
-              <a href="${appUrl}/api/confirm/${newApt.id}?response=no" style="display: block; width: 100%; padding: 14px; background: #ef4444; color: white; text-decoration: none; border-radius: 10px; font-weight: 600; font-size: 15px; text-align: center; box-sizing: border-box;">I need to cancel</a>
-            </td>
-          </tr>
-        </table>
+        <p style="margin: 0 0 8px; font-size: 13px; color: #666;">You'll receive a confirmation email once ${bName} has reviewed your request.</p>
         <p style="margin: 0; font-size: 12px; color: #999; text-align: center;">Powered by <a href="${appUrl}" style="color: #999;">Nudgle</a> &middot; Please do not reply to this email</p>
       </div>`
-    ).catch(() => {});
+    );
+    console.log("[book] Client email result:", clientResult);
+  } else {
+    // --- Normal booking: confirm immediately ---
+
+    // Sync to Google Calendar (fire and forget)
+    if (newApt && business.google_calendar_connected && business.google_refresh_token) {
+      import("@/lib/google-calendar").then(({ createCalendarEvent }) =>
+        createCalendarEvent(business.google_refresh_token!, {
+          summary: `${clientName.trim()} (via Nudgle)`,
+          start: appointmentTimeUtc.toISOString(),
+          end: new Date(appointmentTimeUtc.getTime() + business.default_duration * 60 * 1000).toISOString(),
+          timeZone: business.timezone,
+        }).then((eventId) => {
+          if (eventId) {
+            supabase.from("appointments").update({ google_event_id: eventId }).eq("id", newApt.id).then(() => {});
+          }
+        }).catch(() => {})
+      );
+    }
+
+    // Send confirmation email (fire and forget)
+    if (clientEmail) {
+      sendEmail(
+        clientEmail.trim(),
+        `Booking confirmed — ${bName}`,
+        `Hi ${clientName.trim()},\n\nYour appointment with ${bName} is confirmed:\n\n${displayDate} at ${displayTime}\n${business.default_duration} minutes\n\nNeed to cancel? Reply to this email or contact ${bName} directly.\n\nPowered by Nudgle`,
+        `<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 480px; margin: 0 auto; padding: 32px 20px;">
+          <h2 style="margin: 0 0 8px; font-size: 20px; color: #111;">Booking confirmed</h2>
+          <p style="margin: 0 0 24px; color: #666; font-size: 14px;">Your appointment with <strong style="color: #111;">${bName}</strong></p>
+          <div style="background: #f8f8f8; border-radius: 12px; padding: 20px; margin-bottom: 24px;">
+            <p style="margin: 0 0 8px; font-size: 16px; color: #111; font-weight: 600;">${displayDate}</p>
+            <p style="margin: 0 0 4px; font-size: 14px; color: #666;">${displayTime} &middot; ${business.default_duration} minutes</p>
+          </div>
+          <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin-bottom: 24px;">
+            <tr>
+              <td align="center">
+                <a href="${appUrl}/api/confirm/${newApt.id}?response=yes" style="display: block; width: 100%; padding: 14px; background: #22c55e; color: white; text-decoration: none; border-radius: 10px; font-weight: 600; font-size: 15px; text-align: center; box-sizing: border-box;">Yes, I'll be there</a>
+              </td>
+            </tr>
+            <tr><td height="10"></td></tr>
+            <tr>
+              <td align="center">
+                <a href="${appUrl}/api/confirm/${newApt.id}?response=no" style="display: block; width: 100%; padding: 14px; background: #ef4444; color: white; text-decoration: none; border-radius: 10px; font-weight: 600; font-size: 15px; text-align: center; box-sizing: border-box;">I need to cancel</a>
+              </td>
+            </tr>
+          </table>
+          <p style="margin: 0; font-size: 12px; color: #999; text-align: center;">Powered by <a href="${appUrl}" style="color: #999;">Nudgle</a> &middot; Please do not reply to this email</p>
+        </div>`
+      ).catch(() => {});
+    }
   }
 
   return NextResponse.json({
     success: true,
+    pendingApproval: isConflicted,
     appointment: {
       id: newApt.id,
       date,

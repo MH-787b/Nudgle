@@ -38,7 +38,7 @@ export async function getAccessToken(refreshToken: string): Promise<string | nul
   }
 }
 
-/** Get busy periods from Google Calendar using the FreeBusy API. */
+/** Get busy periods from ALL Google Calendars using the FreeBusy API. */
 export async function getBusyTimes(
   refreshToken: string,
   timeMin: string,
@@ -47,6 +47,18 @@ export async function getBusyTimes(
   try {
     const accessToken = await getAccessToken(refreshToken);
     if (!accessToken) return [];
+
+    // Discover all calendars (same as getCalendarEvents)
+    const calListRes = await fetch(
+      "https://www.googleapis.com/calendar/v3/users/me/calendarList",
+      { headers: { Authorization: `Bearer ${accessToken}` } }
+    );
+    const calListData = await calListRes.json();
+    const calendarIds: string[] = (calListData.items || [])
+      .filter((c: { accessRole?: string }) => c.accessRole === "owner" || c.accessRole === "writer" || c.accessRole === "reader")
+      .map((c: { id: string }) => c.id);
+
+    if (calendarIds.length === 0) calendarIds.push("primary");
 
     const response = await fetch(
       "https://www.googleapis.com/calendar/v3/freeBusy",
@@ -59,7 +71,7 @@ export async function getBusyTimes(
         body: JSON.stringify({
           timeMin,
           timeMax,
-          items: [{ id: "primary" }],
+          items: calendarIds.map((id) => ({ id })),
         }),
       }
     );
@@ -69,7 +81,14 @@ export async function getBusyTimes(
       console.error("Google FreeBusy API error:", data.error || response.status);
       return [];
     }
-    return (data.calendars?.primary?.busy as BusyPeriod[]) || [];
+
+    // Merge busy periods from all calendars
+    const allBusy: BusyPeriod[] = [];
+    for (const calId of Object.keys(data.calendars || {})) {
+      const periods = data.calendars[calId]?.busy as BusyPeriod[] | undefined;
+      if (periods) allBusy.push(...periods);
+    }
+    return allBusy;
   } catch (err) {
     console.error("Google FreeBusy error:", err);
     return [];

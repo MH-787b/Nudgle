@@ -80,7 +80,7 @@ export default async function BookingPage({ params }: { params: Promise<{ code: 
         {/* Business card */}
         <div className="bg-surface-100 rounded-2xl border border-surface-300 overflow-hidden">
           {/* Header */}
-          <div className="bg-gradient-to-br from-brand-500 to-brand-700 px-6 py-8 text-center">
+          <div className="bg-brand-600 px-6 py-8 text-center">
             <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
               <Calendar className="w-8 h-8 text-white" strokeWidth={1.5} />
             </div>

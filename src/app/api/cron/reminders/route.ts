@@ -67,12 +67,40 @@ export async function GET(request: NextRequest) {
 
   debug.push({ now: now.toISOString(), in28h: in28h.toISOString() });
 
+  // --- Auto-reject expired pending_approval requests ---
+  // If the appointment time has passed and owner never responded, cancel it
+  const { data: expiredRequests } = await supabase
+    .from("appointments")
+    .select("id, client_name, client_email, appointment_time, duration_minutes, user_id, profiles:user_id(business_name, timezone)")
+    .eq("status", "pending_approval")
+    .lt("appointment_time", now.toISOString());
+
+  for (const req of expiredRequests || []) {
+    await supabase.from("appointments").update({ status: "cancelled" }).eq("id", req.id);
+    // Notify client their request was auto-declined
+    const prof = req.profiles as unknown as { business_name: string; timezone: string } | null;
+    if (req.client_email) {
+      const tz = prof?.timezone || "Europe/London";
+      const biz = prof?.business_name || "the business";
+      const dDate = new Date(req.appointment_time).toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", timeZone: tz });
+      const dTime = new Date(req.appointment_time).toLocaleTimeString("en-GB", { hour: "numeric", minute: "2-digit", hour12: true, timeZone: tz });
+      const { sendEmail } = await import("@/lib/messaging/email");
+      sendEmail(
+        req.client_email,
+        `Booking update — ${biz}`,
+        `Hi ${req.client_name},\n\nUnfortunately, ${biz} was unable to accommodate your requested booking on ${dDate} at ${dTime}.\n\nPlease visit their booking page to choose an alternative time.\n\nPowered by Nudgle`,
+      ).catch(() => {});
+    }
+    debug.push({ auto_rejected: req.id, client: req.client_name, reason: "appointment_time_passed" });
+  }
+
   const { data: appointments24h, error: queryError } = await supabase
     .from("appointments")
     .select("*, profiles:user_id(*)")
     .eq("reminder_24h_sent", false)
     .eq("reminders_opt_in", true)
     .neq("status", "cancelled")
+    .neq("status", "pending_approval")
     .gte("appointment_time", now.toISOString())
     .lte("appointment_time", in28h.toISOString());
 
@@ -210,6 +238,7 @@ export async function GET(request: NextRequest) {
     .eq("reminders_opt_in", true)
     .neq("status", "cancelled")
     .neq("status", "confirmed")
+    .neq("status", "pending_approval")
     .gte("appointment_time", now.toISOString())
     .lte("appointment_time", in4h.toISOString());
 

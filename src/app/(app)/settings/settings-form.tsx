@@ -383,10 +383,10 @@ export function SettingsForm({ profile, businessHours }: Props) {
           <div className="mt-4 pt-4 border-t border-surface-300/50">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="text-sm font-medium text-white">Block booked calendar times</p>
+                <p className="text-sm font-medium text-white">Require approval for busy times</p>
                 <p className="text-xs text-surface-500 mt-1">
                   {calendarBlocksSlots
-                    ? "Your calendar events block booking slots — clients can't book when you're busy. Best if you work solo."
+                    ? "Calendar events flag booking slots — clients can still request busy times, but you'll need to approve via email. Best if you work solo."
                     : "Clients can book any open slot regardless of your calendar. Best if you have staff who can cover."}
                 </p>
               </div>

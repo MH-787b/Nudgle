@@ -408,22 +408,12 @@ export function WeekCalendar({
                   20
                 );
                 const colors = colorMap[block.type];
-                // Google Calendar-style cascading overlap layout:
-                // Events are staggered left-to-right with each one wider than an equal
-                // share. Earlier events sit behind later ones. Each event extends from
-                // its left offset to near the right edge, so text remains readable
-                // even with 3+ simultaneous events.
+                // Equal-width column layout for overlapping events
                 const n = block.totalColumns;
                 const col = block.column;
-                // Left offset: divide evenly but only across a portion of the width,
-                // leaving room for the last event to still be wide
-                const leftPercent = n > 1 ? col * (100 / (n + 0.5)) : 0;
-                // Width: each event stretches to the right edge minus a small inset,
-                // except the last column which fills to the edge
-                const isLastCol = col === n - 1;
-                const widthPercent = isLastCol
-                  ? 100 - leftPercent
-                  : 100 - leftPercent - 5; // 5% right inset so next column's left border is visible
+                const gap = 2; // px gap between columns
+                const leftPercent = n > 1 ? col * (100 / n) : 0;
+                const widthPercent = 100 / n;
                 const isExpanded = expandedId === block.id;
 
                 const statusLabel = block.type === "google"
@@ -475,8 +465,8 @@ export function WeekCalendar({
                       top: `${top}px`,
                       height: `${height}px`,
                       minHeight: "20px",
-                      left: `calc(${leftPercent}% + 2px)`,
-                      width: `calc(${widthPercent}% - 4px)`,
+                      left: `calc(${leftPercent}% + ${gap / 2}px)`,
+                      width: `calc(${widthPercent}% - ${gap}px)`,
                       zIndex: isExpanded ? 50 : (block.type === "google" ? 1 : 2) + block.column,
                     }}
                     onClick={(e) => {

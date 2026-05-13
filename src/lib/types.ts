@@ -33,7 +33,7 @@ export interface Appointment {
   client_phone: string | null;
   appointment_time: string;
   duration_minutes: number;
-  status: 'pending' | 'confirmed' | 'no_response' | 'cancelled';
+  status: 'pending' | 'confirmed' | 'no_response' | 'cancelled' | 'pending_approval';
   google_event_id: string | null;
   reminder_24h_sent: boolean;
   reminder_2h_sent: boolean;
@@ -65,7 +65,7 @@ export interface Confirmation {
 }
 
 export type ReminderChannel = 'sms' | 'email' | 'whatsapp';
-export type AppointmentStatus = 'pending' | 'confirmed' | 'no_response' | 'cancelled';
+export type AppointmentStatus = 'pending' | 'confirmed' | 'no_response' | 'cancelled' | 'pending_approval';
 export type PlanType = 'trial' | 'starter' | 'business';
 
 export interface BusinessHour {
