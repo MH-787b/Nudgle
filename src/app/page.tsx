@@ -249,7 +249,7 @@ export default function Home() {
                 "500 appointments/month",
                 "Email, WhatsApp & SMS reminders",
                 "Online booking page",
-                "24h + 2h day-of reminders",
+                "24h reminder before each appointment",
                 "Google Calendar sync",
                 "Custom branded booking page",
                 "No-show analytics",

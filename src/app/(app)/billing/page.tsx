@@ -21,7 +21,7 @@ const tiers: { key: 'starter' | 'business'; features: string[] }[] = [
     features: [
       '500 appointments/month',
       'Email, WhatsApp & SMS reminders',
-      '24h + 2h day-of reminders',
+      '24h reminder before each appointment',
       'Online booking page',
       'Google Calendar sync',
       'No-show analytics',

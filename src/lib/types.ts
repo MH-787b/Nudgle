@@ -36,7 +36,7 @@ export interface Appointment {
   status: 'pending' | 'confirmed' | 'no_response' | 'cancelled' | 'pending_approval';
   google_event_id: string | null;
   reminder_24h_sent: boolean;
-  reminder_2h_sent: boolean;
+
   reminders_opt_in: boolean;
   created_at: string;
   updated_at: string;
@@ -47,7 +47,7 @@ export interface Message {
   appointment_id: string;
   user_id: string;
   channel: 'sms' | 'email' | 'whatsapp';
-  message_type: 'reminder_24h' | 'reminder_2h' | 'follow_up';
+  message_type: 'reminder_24h' | 'follow_up';
   recipient: string;
   content: string;
   status: 'sent' | 'delivered' | 'failed';
@@ -103,7 +103,7 @@ export interface PlanConfig {
   appointments: number;
   channels: ReminderChannel[];
   smsCap: number;
-  has2hReminder: boolean;
+
   hasGoogleCalendar: boolean;
   hasCustomBranding: boolean;
   hasAnalytics: boolean;
@@ -118,7 +118,7 @@ export const PLAN_LIMITS: Record<PlanType, PlanConfig> = {
     appointments: 500,
     channels: ['email', 'whatsapp', 'sms'],
     smsCap: 200,
-    has2hReminder: true,
+
     hasGoogleCalendar: true,
     hasCustomBranding: true,
     hasAnalytics: true,
@@ -131,7 +131,7 @@ export const PLAN_LIMITS: Record<PlanType, PlanConfig> = {
     appointments: 500,
     channels: ['email', 'whatsapp', 'sms'],
     smsCap: 200,
-    has2hReminder: true,
+
     hasGoogleCalendar: true,
     hasCustomBranding: true,
     hasAnalytics: true,
@@ -144,7 +144,7 @@ export const PLAN_LIMITS: Record<PlanType, PlanConfig> = {
     appointments: 1500,
     channels: ['email', 'whatsapp', 'sms'],
     smsCap: 500,
-    has2hReminder: true,
+
     hasGoogleCalendar: true,
     hasCustomBranding: true,
     hasAnalytics: true,
