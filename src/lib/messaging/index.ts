@@ -1,5 +1,5 @@
 import { sendSMS, sendWhatsApp } from "./sms";
-import { sendEmail } from "./email";
+import { sendEmail, generateIcs } from "./email";
 import type { ReminderChannel } from "@/lib/types";
 
 interface ReminderParams {
@@ -7,6 +7,7 @@ interface ReminderParams {
   recipient: string;
   clientName: string;
   appointmentTime: string;
+  durationMinutes?: number;
   businessName?: string;
   timezone?: string;
   appointmentId?: string;
@@ -72,7 +73,18 @@ export async function sendReminder(
       </div>
     `;
 
-    const result = await sendEmail(params.recipient, subject, message, html);
+    const attachments = params.durationMinutes ? [{
+      filename: "appointment.ics",
+      content: generateIcs({
+        summary: `Appointment${params.businessName ? ` with ${params.businessName}` : ""}`,
+        start: params.appointmentTime,
+        end: new Date(new Date(params.appointmentTime).getTime() + params.durationMinutes * 60 * 1000).toISOString(),
+        description: "Booked via Nudgle",
+      }),
+      content_type: "text/calendar" as const,
+    }] : undefined;
+
+    const result = await sendEmail(params.recipient, subject, message, html, attachments);
     return { success: result.success, ...(!result.success && { error: result.error }) };
   }
 

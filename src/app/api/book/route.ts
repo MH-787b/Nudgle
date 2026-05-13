@@ -2,7 +2,7 @@ import { createClient } from "@supabase/supabase-js";
 import { NextRequest, NextResponse } from "next/server";
 import { getAvailableSlots } from "@/lib/booking/availability";
 import { getBusyTimes } from "@/lib/google-calendar";
-import { sendEmail } from "@/lib/messaging/email";
+import { sendEmail, generateIcs } from "@/lib/messaging/email";
 import { isTrialExpired } from "@/lib/types";
 import type { BusinessHour } from "@/lib/types";
 
@@ -266,8 +266,16 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Send confirmation email (fire and forget)
+    // Send confirmation email with .ics attachment (fire and forget)
     if (clientEmail) {
+      const endTimeUtc = new Date(appointmentTimeUtc.getTime() + business.default_duration * 60 * 1000);
+      const icsFile = generateIcs({
+        summary: `Appointment with ${bName}`,
+        start: appointmentTimeUtc.toISOString(),
+        end: endTimeUtc.toISOString(),
+        description: `Booked via Nudgle`,
+      });
+
       sendEmail(
         clientEmail.trim(),
         `Booking confirmed — ${bName}`,
@@ -293,7 +301,8 @@ export async function POST(req: NextRequest) {
             </tr>
           </table>
           <p style="margin: 0; font-size: 12px; color: #999; text-align: center;">Powered by <a href="${appUrl}" style="color: #999;">Nudgle</a> &middot; Please do not reply to this email</p>
-        </div>`
+        </div>`,
+        [{ filename: "appointment.ics", content: icsFile, content_type: "text/calendar" }]
       ).catch(() => {});
     }
   }

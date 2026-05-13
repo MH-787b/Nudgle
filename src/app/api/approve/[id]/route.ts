@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { sendEmail } from "@/lib/messaging/email";
+import { sendEmail, generateIcs } from "@/lib/messaging/email";
 
 function escapeHtml(str: string): string {
   return str
@@ -98,8 +98,16 @@ export async function GET(
       );
     }
 
-    // Email client that booking is confirmed
+    // Email client that booking is confirmed (with .ics attachment)
     if (apt.client_email) {
+      const endTime = new Date(new Date(apt.appointment_time).getTime() + apt.duration_minutes * 60 * 1000);
+      const icsFile = generateIcs({
+        summary: `Appointment with ${businessName}`,
+        start: apt.appointment_time,
+        end: endTime.toISOString(),
+        description: "Booked via Nudgle",
+      });
+
       const result = await sendEmail(
         apt.client_email,
         `Booking confirmed — ${businessName}`,
@@ -125,7 +133,8 @@ export async function GET(
             </tr>
           </table>
           <p style="margin: 0; font-size: 12px; color: #999; text-align: center;">Powered by <a href="${appUrl}" style="color: #999;">Nudgle</a> &middot; Please do not reply to this email</p>
-        </div>`
+        </div>`,
+        [{ filename: "appointment.ics", content: icsFile, content_type: "text/calendar" }]
       );
       console.log("[approve] Client confirmation email result:", result);
     }
