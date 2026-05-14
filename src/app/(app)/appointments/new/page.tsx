@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ArrowLeft, Lock, Mail, MessageSquare, Phone } from "lucide-react";
+import { ArrowLeft, Link2, Lock, Mail, MessageSquare, Phone } from "lucide-react";
 import Link from "next/link";
 import { PhoneInput } from "@/components/phone-input";
 import { isTrialExpired } from "@/lib/types";
@@ -23,12 +23,17 @@ export default function NewAppointmentPage() {
   const [error, setError] = useState("");
   const [calendarWarning, setCalendarWarning] = useState<{ summary: string; start: string; end: string }[] | null>(null);
   const [expired, setExpired] = useState(false);
+  const [bookingUrl, setBookingUrl] = useState<string | null>(null);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (!user) return;
-      supabase.from("profiles").select("plan, trial_ends_at").eq("id", user.id).single().then(({ data }) => {
+      supabase.from("profiles").select("plan, trial_ends_at, booking_code").eq("id", user.id).single().then(({ data }) => {
         if (data && isTrialExpired(data.plan, data.trial_ends_at)) setExpired(true);
+        if (data?.booking_code) {
+          const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://nudgle.vercel.app";
+          setBookingUrl(`${appUrl}/book/${data.booking_code}`);
+        }
       });
     });
   }, [supabase]);
@@ -140,6 +145,18 @@ export default function NewAppointmentPage() {
       </Link>
 
       <h1 className="text-2xl font-bold tracking-tight text-white mb-6">New appointment</h1>
+
+      {bookingUrl && !expired && (
+        <div className="bg-surface-100 p-3 rounded-xl border border-brand-500/20 mb-6">
+          <div className="flex items-center gap-2">
+            <Link2 className="w-4 h-4 text-brand-500 shrink-0" strokeWidth={2} />
+            <code className="flex-1 text-xs text-brand-400 font-mono truncate">{bookingUrl}</code>
+          </div>
+          <p className="text-xs text-surface-500 mt-1.5 ml-6">
+            Share this link with clients to have them book themselves in
+          </p>
+        </div>
+      )}
 
       {expired && (
         <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-6 text-center space-y-4">

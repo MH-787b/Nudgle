@@ -353,7 +353,7 @@ export function SettingsForm({ profile, businessHours }: Props) {
                 <p className="text-sm font-medium text-white">Your booking page</p>
               </div>
               <p className="text-xs text-surface-600 mb-2">
-                Share this link on social media, your website, or business cards
+                Share this link with clients to have them book themselves in &mdash; put it on social media, your website, or business cards
               </p>
               <div className="flex gap-2">
                 <code className="flex-1 px-3 py-2 bg-surface-900 rounded-lg text-xs text-brand-400 overflow-x-auto font-mono">

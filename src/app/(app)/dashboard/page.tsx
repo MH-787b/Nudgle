@@ -94,7 +94,7 @@ export default async function DashboardPage({
   const savedAmount = (confirmedThisMonth || 0) * appointmentValue;
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://nudgle.vercel.app";
-  const bookingPageUrl = profile?.booking_enabled && profile?.booking_code
+  const bookingPageUrl = profile?.booking_code
     ? `${appUrl}/book/${profile.booking_code}`
     : null;
 
@@ -204,49 +204,28 @@ export default async function DashboardPage({
     </div>
   );
 
-  const bookingSection = expired ? null : (
-    <>
-      {bookingPageUrl && (
-        <div className="bg-surface-100 p-4 rounded-xl border border-brand-500/20 mb-6 flex items-center gap-3">
-          <div className="w-9 h-9 bg-brand-500/10 rounded-lg flex items-center justify-center shrink-0">
-            <Calendar className="w-5 h-5 text-brand-500" strokeWidth={2} />
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-white">Online booking is live</p>
-            <p className="text-xs text-surface-600 truncate">{bookingPageUrl}</p>
-          </div>
-          <Link
-            href="/settings"
-            className="text-xs font-medium text-brand-500 hover:text-brand-400 transition-colors shrink-0"
-          >
-            Manage
-          </Link>
+  const bookingSection = expired ? null : bookingPageUrl ? (
+    <div className="bg-surface-100 p-4 rounded-xl border border-brand-500/20 mb-6">
+      <div className="flex items-center gap-3">
+        <div className="w-9 h-9 bg-brand-500/10 rounded-lg flex items-center justify-center shrink-0">
+          <Calendar className="w-5 h-5 text-brand-500" strokeWidth={2} />
         </div>
-      )}
-
-      {!profile?.booking_enabled && (
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-medium text-white">Your booking link</p>
+          <p className="text-xs text-brand-400 font-mono truncate">{bookingPageUrl}</p>
+        </div>
         <Link
           href="/settings"
-          className="block bg-brand-500/5 p-5 rounded-xl border border-brand-500/20 mb-6 hover:border-brand-500/40 transition-colors"
+          className="text-xs font-medium text-brand-500 hover:text-brand-400 transition-colors shrink-0"
         >
-          <div className="flex items-center gap-3 mb-3">
-            <div className="w-10 h-10 bg-brand-500/10 rounded-lg flex items-center justify-center shrink-0">
-              <Calendar className="w-5 h-5 text-brand-500" strokeWidth={2} />
-            </div>
-            <div>
-              <p className="font-semibold text-white">Enable Online Booking</p>
-              <p className="text-xs text-surface-600">Your #1 tool to fill your calendar</p>
-            </div>
-          </div>
-          <div className="space-y-1.5 ml-[52px]">
-            <p className="text-xs text-surface-500">Clients book online in 30 seconds &mdash; no app needed</p>
-            <p className="text-xs text-surface-500">Share on Instagram, your website, or business card</p>
-            <p className="text-xs text-brand-400/70 font-medium mt-2">Set up in Settings &rarr;</p>
-          </div>
+          Manage
         </Link>
-      )}
-    </>
-  );
+      </div>
+      <p className="text-xs text-surface-500 mt-2 ml-12">
+        Share this link with clients to have them book themselves in
+      </p>
+    </div>
+  ) : null;
 
   const todaySection = (
     <>

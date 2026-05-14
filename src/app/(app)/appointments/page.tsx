@@ -27,7 +27,7 @@ export default async function AppointmentsPage() {
   const appointments = (data || []) as Appointment[];
   const expired = isTrialExpired(profile?.plan || "trial", profile?.trial_ends_at || null);
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://nudgle.vercel.app";
-  const bookingUrl = profile?.booking_enabled && profile?.booking_code
+  const bookingUrl = profile?.booking_code
     ? `${appUrl}/book/${profile.booking_code}`
     : null;
 
@@ -55,15 +55,20 @@ export default async function AppointmentsPage() {
       </div>
 
       {bookingUrl && !expired && (
-        <div className="bg-surface-100 p-3 rounded-xl border border-brand-500/20 mb-6 flex items-center gap-3">
-          <Link2 className="w-4 h-4 text-brand-500 shrink-0" strokeWidth={2} />
-          <code className="flex-1 text-xs text-brand-400 font-mono truncate">{bookingUrl}</code>
-          <Link
-            href="/settings"
-            className="text-xs font-medium text-surface-500 hover:text-white transition-colors shrink-0"
-          >
-            Manage
-          </Link>
+        <div className="bg-surface-100 p-3 rounded-xl border border-brand-500/20 mb-6">
+          <div className="flex items-center gap-3">
+            <Link2 className="w-4 h-4 text-brand-500 shrink-0" strokeWidth={2} />
+            <code className="flex-1 text-xs text-brand-400 font-mono truncate">{bookingUrl}</code>
+            <Link
+              href="/settings"
+              className="text-xs font-medium text-surface-500 hover:text-white transition-colors shrink-0"
+            >
+              Manage
+            </Link>
+          </div>
+          <p className="text-xs text-surface-500 mt-1.5 ml-7">
+            Share this link with clients to have them book themselves in
+          </p>
         </div>
       )}
 
