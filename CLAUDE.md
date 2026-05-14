@@ -114,9 +114,9 @@ src/
 - Gumroad product IDs are base64-encoded strings (not URL slugs) — found via webhook debug logging
 - Gumroad seller ID is also base64-encoded — `GUMROAD_SELLER_ID` env var must match exactly including `==` suffix
 
-## Temporarily Disabled
+## Email Confirmation
 
-- **Email confirmation on signup** — disabled in Supabase Auth settings. Resend SMTP configured, `nudgle.co.uk` domain verified. Re-enable when ready.
+- **Email confirmation on signup** — temporarily disabled for tutorial video recording. Re-enable in Supabase Auth settings after video is done. Resend SMTP configured, `nudgle.co.uk` domain verified.
 
 ## Online Booking (Primary)
 

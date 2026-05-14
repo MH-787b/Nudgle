@@ -39,3 +39,6 @@ prompt.md
 # Claude Code local config
 .agents/
 .claude/
+
+# Source video files (public/ copies are deployed via Vercel)
+/*.mp4

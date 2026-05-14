@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { AlertTriangle, Calendar, CheckCircle, Clock, Link2, Lock, Plus } from "lucide-react";
 import Link from "next/link";
+import { CopyButton } from "@/components/copy-button";
 import { isTrialExpired } from "@/lib/types";
 import type { Appointment } from "@/lib/types";
 
@@ -59,6 +60,7 @@ export default async function AppointmentsPage() {
           <div className="flex items-center gap-3">
             <Link2 className="w-4 h-4 text-brand-500 shrink-0" strokeWidth={2} />
             <code className="flex-1 text-xs text-brand-400 font-mono truncate">{bookingUrl}</code>
+            <CopyButton text={bookingUrl} />
             <Link
               href="/settings"
               className="text-xs font-medium text-surface-500 hover:text-white transition-colors shrink-0"

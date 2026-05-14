@@ -4,7 +4,7 @@ import { getAvailableSlots } from "@/lib/booking/availability";
 import { getBusyTimes } from "@/lib/google-calendar";
 import { sendEmail, generateIcs } from "@/lib/messaging/email";
 import { isTrialExpired } from "@/lib/types";
-import type { BusinessHour } from "@/lib/types";
+import type { BusinessHour, Holiday } from "@/lib/types";
 
 function getSupabase() {
   return createClient(
@@ -44,10 +44,16 @@ export async function GET(req: NextRequest) {
 
   const businessHours = (hours || []) as BusinessHour[];
 
+  const { data: holidayRows } = await supabase
+    .from("holidays")
+    .select("*")
+    .eq("user_id", business.id);
+  const holidays = (holidayRows || []) as Holiday[];
+
   if (!date) {
     // Return available days (next 14 days)
     const { getAvailableDays } = await import("@/lib/booking/availability");
-    const days = getAvailableDays(businessHours, business.timezone, 14);
+    const days = getAvailableDays(businessHours, business.timezone, 14, holidays);
     return NextResponse.json({ days });
   }
 
@@ -75,7 +81,8 @@ export async function GET(req: NextRequest) {
     appointments || [],
     business.default_duration,
     business.timezone,
-    busyPeriods
+    busyPeriods,
+    holidays
   );
 
   return NextResponse.json({ slots, calendarBlocking: business.google_calendar_blocks_slots && business.google_calendar_connected });
@@ -115,6 +122,12 @@ export async function POST(req: NextRequest) {
 
   const businessHours = (hours || []) as BusinessHour[];
 
+  const { data: holidayRows2 } = await supabase
+    .from("holidays")
+    .select("*")
+    .eq("user_id", business.id);
+  const holidays = (holidayRows2 || []) as Holiday[];
+
   // Validate slot is still available
   const dayStart = `${date}T00:00:00Z`;
   const dayEnd = `${date}T23:59:59Z`;
@@ -138,7 +151,8 @@ export async function POST(req: NextRequest) {
     existingAppts || [],
     business.default_duration,
     business.timezone,
-    busyPeriods
+    busyPeriods,
+    holidays
   );
 
   const matchedSlot = availableSlots.find((s) => s.time === time);

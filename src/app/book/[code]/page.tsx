@@ -71,7 +71,16 @@ export default async function BookingPage({ params }: { params: Promise<{ code: 
     .eq("user_id", business.id)
     .order("day_of_week");
 
-  const businessHours = (hours || []) as BusinessHour[];
+  const DEFAULT_HOURS: BusinessHour[] = [
+    { id: "", user_id: "", day_of_week: 0, open_time: "09:00", close_time: "17:00", is_closed: false },
+    { id: "", user_id: "", day_of_week: 1, open_time: "09:00", close_time: "17:00", is_closed: false },
+    { id: "", user_id: "", day_of_week: 2, open_time: "09:00", close_time: "17:00", is_closed: false },
+    { id: "", user_id: "", day_of_week: 3, open_time: "09:00", close_time: "17:00", is_closed: false },
+    { id: "", user_id: "", day_of_week: 4, open_time: "09:00", close_time: "17:00", is_closed: false },
+    { id: "", user_id: "", day_of_week: 5, open_time: "09:00", close_time: "17:00", is_closed: true },
+    { id: "", user_id: "", day_of_week: 6, open_time: "09:00", close_time: "17:00", is_closed: true },
+  ];
+  const businessHours = (hours && hours.length > 0 ? hours : DEFAULT_HOURS) as BusinessHour[];
   const businessName = business.business_name || "this business";
 
   return (

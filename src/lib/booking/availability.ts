@@ -1,7 +1,23 @@
-import type { Appointment, BusinessHour } from "@/lib/types";
+import type { Appointment, BusinessHour, Holiday } from "@/lib/types";
 import type { BusyPeriod } from "@/lib/google-calendar";
 
 const DAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
+/** Default Mon–Fri 9–5, Sat–Sun closed — used when no business_hours rows exist yet. */
+const DEFAULT_HOURS: BusinessHour[] = [
+  { id: "", user_id: "", day_of_week: 0, open_time: "09:00", close_time: "17:00", is_closed: false },
+  { id: "", user_id: "", day_of_week: 1, open_time: "09:00", close_time: "17:00", is_closed: false },
+  { id: "", user_id: "", day_of_week: 2, open_time: "09:00", close_time: "17:00", is_closed: false },
+  { id: "", user_id: "", day_of_week: 3, open_time: "09:00", close_time: "17:00", is_closed: false },
+  { id: "", user_id: "", day_of_week: 4, open_time: "09:00", close_time: "17:00", is_closed: false },
+  { id: "", user_id: "", day_of_week: 5, open_time: "09:00", close_time: "17:00", is_closed: true },
+  { id: "", user_id: "", day_of_week: 6, open_time: "09:00", close_time: "17:00", is_closed: true },
+];
+
+/** Returns true if a YYYY-MM-DD date string falls within any holiday range. */
+function isHoliday(dateStr: string, holidays: Holiday[]): boolean {
+  return holidays.some((h) => dateStr >= h.start_date && dateStr <= h.end_date);
+}
 
 /** Convert JS getDay() (0=Sun) to our DB day (0=Mon) */
 function jsToDbDay(jsDay: number): number {
@@ -34,8 +50,10 @@ export function dateInTz(year: number, month: number, day: number, hours: number
 export function getAvailableDays(
   businessHours: BusinessHour[],
   timezone: string = "Europe/London",
-  daysAhead: number = 7
+  daysAhead: number = 7,
+  holidays: Holiday[] = []
 ): { date: string; label: string }[] {
+  const hours = businessHours.length > 0 ? businessHours : DEFAULT_HOURS;
   const result: { date: string; label: string }[] = [];
   const now = nowInTz(timezone);
 
@@ -44,14 +62,14 @@ export function getAvailableDays(
     date.setDate(date.getDate() + i);
 
     const dbDay = jsToDbDay(date.getDay());
-    const hours = businessHours.find((h) => h.day_of_week === dbDay);
+    const dayHours = hours.find((h) => h.day_of_week === dbDay);
+    const dateStr = `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, "0")}-${date.getDate().toString().padStart(2, "0")}`;
 
-    if (hours && !hours.is_closed) {
+    if (dayHours && !dayHours.is_closed && !isHoliday(dateStr, holidays)) {
       const dayName = DAY_LABELS[dbDay];
       const day = date.getDate();
       const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
       const month = monthNames[date.getMonth()];
-      const dateStr = `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, "0")}-${day.toString().padStart(2, "0")}`;
       result.push({ date: dateStr, label: `${dayName} ${day} ${month}` });
     }
   }
@@ -66,12 +84,16 @@ export function getAvailableSlots(
   appointments: Appointment[],
   durationMinutes: number,
   timezone: string = "Europe/London",
-  busyPeriods: BusyPeriod[] = []
+  busyPeriods: BusyPeriod[] = [],
+  holidays: Holiday[] = []
 ): { time: string; label: string; conflicted: boolean }[] {
+  if (isHoliday(dateStr, holidays)) return [];
+
+  const effectiveHours = businessHours.length > 0 ? businessHours : DEFAULT_HOURS;
   const [year, month, day] = dateStr.split("-").map(Number);
   const dateObj = new Date(year, month - 1, day);
   const dbDay = jsToDbDay(dateObj.getDay());
-  const hours = businessHours.find((h) => h.day_of_week === dbDay);
+  const hours = effectiveHours.find((h) => h.day_of_week === dbDay);
 
   if (!hours || hours.is_closed) return [];
 

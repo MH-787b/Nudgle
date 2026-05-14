@@ -5,6 +5,8 @@ import Link from "next/link";
 import { isTrialExpired } from "@/lib/types";
 import type { Appointment } from "@/lib/types";
 import { WeekCalendar } from "@/components/week-calendar";
+import { CopyButton } from "@/components/copy-button";
+import { QrCode } from "@/components/qr-code";
 import { getCalendarEvents, type GoogleEvent } from "@/lib/google-calendar";
 
 export default async function DashboardPage({
@@ -230,6 +232,7 @@ export default async function DashboardPage({
           <p className="text-sm font-medium text-white">Your booking link</p>
           <p className="text-xs text-brand-400 font-mono truncate">{bookingPageUrl}</p>
         </div>
+        <CopyButton text={bookingPageUrl} />
         <Link
           href="/settings"
           className="text-xs font-medium text-brand-500 hover:text-brand-400 transition-colors shrink-0"
@@ -240,6 +243,15 @@ export default async function DashboardPage({
       <p className="text-xs text-surface-500 mt-2 ml-12">
         Share this link with clients to have them book themselves in
       </p>
+      <details className="mt-3 ml-12 group">
+        <summary className="text-xs font-medium text-surface-500 cursor-pointer hover:text-surface-400 transition-colors list-none flex items-center gap-1">
+          <span className="group-open:rotate-90 transition-transform">&#9654;</span>
+          QR code
+        </summary>
+        <div className="mt-3">
+          <QrCode url={bookingPageUrl} businessName={profile?.business_name || undefined} />
+        </div>
+      </details>
     </div>
   ) : null;
 

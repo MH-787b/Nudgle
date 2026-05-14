@@ -1,88 +1,87 @@
 # Nudgle Tutorial Video Script
 
-**Target length:** 90–120 seconds
+**Target length:** 60–90 seconds
 **Tone:** Casual, direct, confident. Like showing a mate how it works.
 **Format:** Screen recording with voiceover. No face cam needed.
 
 ---
 
-## INTRO (10s)
+## PRE-RECORDING SETUP
+
+- Create a test account (email confirmation is temporarily disabled)
+- Add 4–5 fake appointments across the week so the dashboard looks populated (mix of confirmed, pending)
+- Connect Google Calendar so blue events appear on the week view
+- Have a reminder email ready to show (screenshot or real one from test)
+
+---
+
+## INTRO (8s)
 
 **[Screen: nudgle.co.uk landing page]**
 
-> "If you run a service business — barber, salon, therapist, PT — you know no-shows cost you money. Nudgle fixes that. Let me show you how it works."
+> "If you run a service business — barber, salon, therapist — no-shows cost you money. Nudgle fixes that in under a minute. Here's how."
 
 ---
 
-## 1. SIGN UP & ONBOARDING (15s)
+## 1. SIGN UP & ONBOARDING (12s)
 
-**[Screen: Click "Start 14-day free trial" → signup page → onboarding flow]**
+**[Screen: Click "Start free trial" → signup page → onboarding flow]**
 
-> "Sign up takes 10 seconds. Then you connect your Google Calendar so Nudgle knows when you're busy, and pick how you want to remind clients — email, SMS, or both."
+> "Sign up, connect your Google Calendar, pick how you want to remind clients — email or SMS — and you're in."
 
-**[Click through the 3 onboarding steps quickly]**
-
----
-
-## 2. DASHBOARD (15s)
-
-**[Screen: Dashboard with week calendar view, appointments, savings metric]**
-
-> "This is your dashboard. You've got your week view — just like Google Calendar — showing all your appointments. Green means confirmed, amber means waiting for a response. Up top you can see how much Nudgle has saved you by preventing no-shows."
+**[Click through the 3 onboarding steps quickly — don't linger]**
 
 ---
 
-## 3. ADD AN APPOINTMENT (15s)
+## 2. DASHBOARD (10s)
 
-**[Screen: Click a day on the calendar → new appointment form]**
+**[Screen: Dashboard with week calendar, appointments, savings metric]**
 
-> "Adding an appointment is quick. Tap a day, fill in the client's name, email, and pick a time. Nudgle checks your Google Calendar for conflicts and warns you before you double-book."
-
-**[Show the conflict warning briefly]**
+> "Your dashboard shows your whole week. Green is confirmed, amber is waiting. Up top — how much Nudgle has saved you by preventing no-shows."
 
 ---
 
-## 4. ONLINE BOOKING PAGE (20s)
+## 3. ADD AN APPOINTMENT (10s)
 
-**[Screen: Settings → toggle Online Booking on → copy link → open booking page in new tab]**
+**[Screen: Click a day on the calendar → new appointment form → fill in quickly]**
 
-> "Here's the best part. Turn on online booking in settings and you get a link you can put on Instagram, your website, or a business card. Clients pick a day, pick a time, fill in their details, and they're booked — no calls, no DMs."
-
-**[Show the public booking page: pick day → pick time → enter details → confirmed]**
+> "Tap a day, add the client's name, email, pick a time. Nudgle checks Google Calendar so you don't double-book."
 
 ---
 
-## 5. REMINDERS & CONFIRMATIONS (15s)
+## 4. ONLINE BOOKING PAGE (15s)
 
-**[Screen: Show a reminder email with Yes/No buttons, then dashboard showing "Confirmed" status]**
+**[Screen: Copy booking link from dashboard → open in new tab → walk through booking flow]**
 
-> "24 hours before the appointment, Nudgle sends your client a reminder automatically. They tap Yes to confirm or No to cancel. You see it update on your dashboard in real time — no chasing."
+> "You also get a booking page — put the link on Instagram, your website, wherever. Clients pick a day, pick a time, fill in their details, done. No calls, no DMs."
 
----
-
-## 6. GOOGLE CALENDAR SYNC (10s)
-
-**[Screen: Dashboard week view showing both Nudgle (green) and Google Calendar (blue) events]**
-
-> "Everything syncs with Google Calendar both ways. Your Nudgle appointments show up in Google, and your Google events show up here — so you never double-book."
+**[Show: pick day → pick time → enter details → confirmed]**
 
 ---
 
-## 7. PRICING & CTA (15s)
+## 5. AUTOMATIC REMINDERS (10s)
 
-**[Screen: Scroll to pricing section on landing page]**
+**[Screen: Show a reminder email with Yes/No buttons]**
 
-> "Plans start at £29 a month — email, SMS, and WhatsApp reminders all included, no per-message charges. You get a 14-day free trial, no card needed. Just sign up and start reducing no-shows today."
-
-**[Screen: Click "Start 14-day free trial"]**
+> "24 hours before, Nudgle sends a reminder automatically. Client taps Yes to confirm or No to cancel — updates your dashboard instantly. No chasing."
 
 ---
+
+## 6. PRICING & CTA (10s)
+
+**[Screen: Pricing section on landing page]**
+
+> "Starts at £29 a month — email and SMS included, no per-message charges. Try it free for 7 days. Link's below."
+
+---
+
+## TOTAL: ~65 seconds
 
 ## RECORDING TIPS
 
-- Use a real account with a few test appointments already in so the dashboard looks populated
-- Keep the mouse movements smooth and deliberate — don't rush clicks
-- Pause for half a second on each screen so viewers can register what they're looking at
-- Record at 1920x1080, crop to 16:9
-- Add subtle zoom-ins on key moments (booking confirmation, reminder email, savings metric)
-- Background music: something lo-fi and unobtrusive, fade under the voiceover
+- Keep mouse movements smooth and deliberate — don't rush clicks
+- Pause half a second on each new screen so viewers register it
+- Record at 1920x1080, 16:9
+- Add subtle zoom-ins on: booking confirmation, reminder email, savings metric
+- Background music: lo-fi, quiet, fade under voiceover
+- Speed up typing sequences to 2x so it doesn't drag

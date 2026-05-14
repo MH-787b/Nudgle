@@ -77,6 +77,15 @@ export interface BusinessHour {
   is_closed: boolean;
 }
 
+export interface Holiday {
+  id: string;
+  user_id: string;
+  start_date: string;
+  end_date: string;
+  label: string | null;
+  created_at: string;
+}
+
 export interface Conversation {
   id: string;
   business_id: string;

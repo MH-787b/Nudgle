@@ -103,6 +103,10 @@ function OnboardingFlow() {
               Connect Google Calendar
             </button>
 
+            <p className="text-xs text-surface-500 text-center leading-relaxed">
+              You may see a warning from Google &mdash; this is normal while our app is being verified. Click <strong className="text-surface-400">&quot;Advanced&quot;</strong> then <strong className="text-surface-400">&quot;Go to Nudgle&quot;</strong> to continue.
+            </p>
+
             <button
               onClick={() => setStep(2)}
               className="w-full py-4 text-surface-600 font-medium hover:text-white transition-colors"
@@ -127,19 +131,6 @@ function OnboardingFlow() {
             </div>
 
             <div className="space-y-3">
-              <div
-                className="w-full p-4 rounded-lg border border-surface-300 bg-surface-100 text-left flex items-center gap-4 opacity-50 cursor-not-allowed relative"
-              >
-                <MessageSquare className="w-5 h-5 text-surface-500" strokeWidth={2} />
-                <div>
-                  <p className="font-semibold text-white">WhatsApp</p>
-                  <p className="text-sm text-surface-600">98% open rate &mdash; included free</p>
-                </div>
-                <span className="absolute top-2 right-3 text-[10px] font-semibold text-brand-400 bg-surface-900 px-1.5 py-0.5 rounded">
-                  Coming Soon
-                </span>
-              </div>
-
               <button
                 onClick={() => setReminderMethod("sms")}
                 className={`w-full p-4 rounded-lg border transition-all text-left flex items-center gap-4 active:scale-[0.98] ${

@@ -206,12 +206,12 @@ export default function BranchHero() {
         </div>
 
         <div className="mt-8 flex flex-col items-center gap-3 animate-in delay-2">
-          <Link
-            href="/signup"
+          <button
+            onClick={() => document.getElementById("tutorial")?.scrollIntoView({ behavior: "smooth" })}
             className="px-8 py-3.5 bg-surface-100 border border-brand-500 text-white text-base font-semibold rounded-xl hover:bg-surface-200 active:scale-[0.98] transition-all"
           >
-            Start your free 7-day trial
-          </Link>
+            Learn how it works
+          </button>
           <p className="text-sm text-surface-500 font-mono">
             Setup in 60 seconds
           </p>

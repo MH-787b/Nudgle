@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import type { BusinessHour } from "@/lib/types";
+import type { BusinessHour, Holiday } from "@/lib/types";
 import { SettingsForm } from "./settings-form";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
@@ -20,6 +20,12 @@ export default async function SettingsPage() {
     .eq("user_id", user!.id)
     .order("day_of_week");
 
+  const { data: holidays } = await supabase
+    .from("holidays")
+    .select("*")
+    .eq("user_id", user!.id)
+    .order("start_date");
+
   return (
     <div className="max-w-lg lg:max-w-4xl mx-auto px-4 pt-8">
       <Link
@@ -33,6 +39,7 @@ export default async function SettingsPage() {
       <SettingsForm
         profile={profile}
         businessHours={(hours || []) as BusinessHour[]}
+        holidays={(holidays || []) as Holiday[]}
       />
     </div>
   );

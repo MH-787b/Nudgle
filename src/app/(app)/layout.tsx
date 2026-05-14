@@ -26,9 +26,9 @@ export default async function AppLayout({
     redirect("/onboarding");
   }
 
-  // Auto-grant business plan to owner (skip payments for testing/admin)
-  const ownerEmail = process.env.OWNER_EMAIL?.trim();
-  if (ownerEmail && profile && user.email?.toLowerCase() === ownerEmail.toLowerCase() && profile.plan !== 'business') {
+  // Auto-grant business plan to owner emails (skip payments for testing/admin)
+  const ownerEmails = (process.env.OWNER_EMAIL?.trim() || "").split(",").map(e => e.trim().toLowerCase()).filter(Boolean);
+  if (ownerEmails.length && profile && ownerEmails.includes(user.email?.toLowerCase() || "") && profile.plan !== 'business') {
     const admin = createServiceClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!

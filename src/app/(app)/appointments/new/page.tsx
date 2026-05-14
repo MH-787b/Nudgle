@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, Link2, Lock, Mail, MessageSquare, Phone } from "lucide-react";
 import Link from "next/link";
 import { PhoneInput } from "@/components/phone-input";
+import { CopyButton } from "@/components/copy-button";
 import { isTrialExpired } from "@/lib/types";
 
 export default function NewAppointmentPage() {
@@ -151,6 +152,7 @@ export default function NewAppointmentPage() {
           <div className="flex items-center gap-2">
             <Link2 className="w-4 h-4 text-brand-500 shrink-0" strokeWidth={2} />
             <code className="flex-1 text-xs text-brand-400 font-mono truncate">{bookingUrl}</code>
+            <CopyButton text={bookingUrl} />
           </div>
           <p className="text-xs text-surface-500 mt-1.5 ml-6">
             Share this link with clients to have them book themselves in
@@ -235,9 +237,8 @@ export default function NewAppointmentPage() {
           <label className="block text-sm font-medium text-surface-600 mb-1.5">
             Remind via
           </label>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-2 gap-2">
             {([
-              { value: "whatsapp" as const, label: "WhatsApp", icon: MessageSquare, comingSoon: true },
               { value: "sms" as const, label: "SMS", icon: Phone, comingSoon: false },
               { value: "email" as const, label: "Email", icon: Mail, comingSoon: false },
             ]).map(({ value, label, icon: Icon, comingSoon }) => (

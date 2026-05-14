@@ -3,8 +3,9 @@
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
-import { Calendar, Check, Copy, Link2, Globe, Mail, MessageSquare, Phone } from "lucide-react";
-import type { BusinessHour } from "@/lib/types";
+import { Calendar, Check, Copy, Link2, Globe, Mail, MessageSquare, Phone, Plus, Trash2, Palmtree } from "lucide-react";
+import type { BusinessHour, Holiday } from "@/lib/types";
+import { QrCode } from "@/components/qr-code";
 
 const DAY_NAMES = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 
@@ -67,9 +68,10 @@ interface Props {
     reminder_method: 'email' | 'sms' | 'whatsapp';
   } | null;
   businessHours: BusinessHour[];
+  holidays: Holiday[];
 }
 
-export function SettingsForm({ profile, businessHours }: Props) {
+export function SettingsForm({ profile, businessHours, holidays: initialHolidays }: Props) {
   const router = useRouter();
   const supabase = createClient();
 
@@ -90,6 +92,11 @@ export function SettingsForm({ profile, businessHours }: Props) {
   });
   const [reminderMethod, setReminderMethod] = useState<'email' | 'sms' | 'whatsapp'>(profile?.reminder_method ?? "email");
   const [appointmentValue, setAppointmentValue] = useState(String(profile?.average_appointment_value ?? ""));
+  const [holidays, setHolidays] = useState<Holiday[]>(initialHolidays);
+  const [newHolidayStart, setNewHolidayStart] = useState("");
+  const [newHolidayEnd, setNewHolidayEnd] = useState("");
+  const [newHolidayLabel, setNewHolidayLabel] = useState("");
+  const [holidayAdding, setHolidayAdding] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -103,6 +110,53 @@ export function SettingsForm({ profile, businessHours }: Props) {
     setHours((prev) =>
       prev.map((h) => (h.day_of_week === day ? { ...h, [field]: value } : h))
     );
+  }
+
+  /** Adds a holiday date range to the database. */
+  async function addHoliday() {
+    if (!newHolidayStart || !newHolidayEnd) {
+      setError("Please select both a start and end date for the holiday.");
+      return;
+    }
+    if (newHolidayEnd < newHolidayStart) {
+      setError("End date must be on or after the start date.");
+      return;
+    }
+    setHolidayAdding(true);
+    setError(null);
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) { setHolidayAdding(false); return; }
+
+    const { data, error: insertErr } = await supabase
+      .from("holidays")
+      .insert({
+        user_id: user.id,
+        start_date: newHolidayStart,
+        end_date: newHolidayEnd,
+        label: newHolidayLabel.trim() || null,
+      })
+      .select()
+      .single();
+
+    if (insertErr) {
+      setError(`Failed to add holiday: ${insertErr.message}`);
+    } else if (data) {
+      setHolidays((prev) => [...prev, data as Holiday].sort((a, b) => a.start_date.localeCompare(b.start_date)));
+      setNewHolidayStart("");
+      setNewHolidayEnd("");
+      setNewHolidayLabel("");
+    }
+    setHolidayAdding(false);
+  }
+
+  /** Removes a holiday from the database. */
+  async function deleteHoliday(id: string) {
+    const { error: delErr } = await supabase.from("holidays").delete().eq("id", id);
+    if (delErr) {
+      setError(`Failed to delete holiday: ${delErr.message}`);
+    } else {
+      setHolidays((prev) => prev.filter((h) => h.id !== id));
+    }
   }
 
   async function handleSave() {
@@ -221,10 +275,9 @@ export function SettingsForm({ profile, businessHours }: Props) {
         <label className="block text-sm font-medium text-surface-600 mb-1.5">
           Remind clients via
         </label>
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-2 gap-2">
           {([
             { value: "email" as const, label: "Email", icon: Mail, comingSoon: false },
-            { value: "whatsapp" as const, label: "WhatsApp", icon: MessageSquare, comingSoon: true },
             { value: "sms" as const, label: "SMS", icon: Phone, comingSoon: false },
           ]).map(({ value, label, icon: Icon, comingSoon }) => (
             <button
@@ -345,6 +398,89 @@ export function SettingsForm({ profile, businessHours }: Props) {
             </div>
           </div>
 
+          {/* Holidays */}
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <Palmtree className="w-4 h-4 text-brand-500" strokeWidth={2} />
+              <h2 className="text-sm font-medium text-surface-600">Holidays</h2>
+            </div>
+            <p className="text-xs text-surface-500 mb-3">Block out dates when you&apos;re away. Clients won&apos;t be able to book during these periods.</p>
+
+            {/* Existing holidays */}
+            {holidays.length > 0 && (
+              <div className="space-y-2 mb-3">
+                {holidays.map((h) => {
+                  const fmt = (d: string) => {
+                    const [y, m, day] = d.split("-").map(Number);
+                    return new Date(y, m - 1, day).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+                  };
+                  const isSingleDay = h.start_date === h.end_date;
+                  return (
+                    <div key={h.id} className="flex items-center justify-between p-3 rounded-lg border border-surface-300 bg-surface-100">
+                      <div>
+                        <p className="text-sm text-white font-medium">
+                          {h.label || "Holiday"}
+                        </p>
+                        <p className="text-xs text-surface-500">
+                          {isSingleDay ? fmt(h.start_date) : `${fmt(h.start_date)} – ${fmt(h.end_date)}`}
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => deleteHoliday(h.id)}
+                        className="text-surface-500 hover:text-red-400 transition-colors p-1"
+                      >
+                        <Trash2 className="w-4 h-4" strokeWidth={2} />
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Add holiday form */}
+            <div className="p-3 rounded-lg border border-surface-300/50 bg-surface-100/50 space-y-2">
+              <input
+                type="text"
+                placeholder="Label (e.g. Summer holiday)"
+                value={newHolidayLabel}
+                onChange={(e) => setNewHolidayLabel(e.target.value)}
+                className={`w-full ${inputClass}`}
+              />
+              <div className="flex items-center gap-2">
+                <div className="flex-1">
+                  <label className="block text-xs text-surface-500 mb-0.5">Start</label>
+                  <input
+                    type="date"
+                    value={newHolidayStart}
+                    onChange={(e) => {
+                      setNewHolidayStart(e.target.value);
+                      if (!newHolidayEnd || e.target.value > newHolidayEnd) setNewHolidayEnd(e.target.value);
+                    }}
+                    className={`w-full ${inputClass}`}
+                  />
+                </div>
+                <div className="flex-1">
+                  <label className="block text-xs text-surface-500 mb-0.5">End</label>
+                  <input
+                    type="date"
+                    value={newHolidayEnd}
+                    min={newHolidayStart || undefined}
+                    onChange={(e) => setNewHolidayEnd(e.target.value)}
+                    className={`w-full ${inputClass}`}
+                  />
+                </div>
+              </div>
+              <button
+                onClick={addHoliday}
+                disabled={holidayAdding || !newHolidayStart || !newHolidayEnd}
+                className="w-full flex items-center justify-center gap-1.5 py-2 bg-surface-300 text-white rounded-lg text-sm font-medium hover:bg-surface-400 active:scale-[0.98] transition-all disabled:opacity-50"
+              >
+                <Plus className="w-4 h-4" strokeWidth={2} />
+                {holidayAdding ? "Adding..." : "Add holiday"}
+              </button>
+            </div>
+          </div>
+
           {/* Booking link */}
           {bookingCode && (
             <div className="bg-surface-100 rounded-xl border border-brand-500/30 p-5">
@@ -366,6 +502,15 @@ export function SettingsForm({ profile, businessHours }: Props) {
                   {copied ? <Check className="w-4 h-4" strokeWidth={2} /> : <Copy className="w-4 h-4" strokeWidth={2} />}
                 </button>
               </div>
+              <details className="mt-4 group">
+                <summary className="text-xs font-medium text-surface-500 cursor-pointer hover:text-surface-400 transition-colors list-none flex items-center gap-1">
+                  <span className="group-open:rotate-90 transition-transform">&#9654;</span>
+                  QR code
+                </summary>
+                <div className="mt-3">
+                  {bookingPageUrl && <QrCode url={bookingPageUrl} businessName={profile?.business_name || undefined} />}
+                </div>
+              </details>
             </div>
           )}
 
@@ -387,7 +532,7 @@ export function SettingsForm({ profile, businessHours }: Props) {
               <p className="text-sm text-surface-600">
                 {profile?.google_calendar_connected
                   ? "Connected — bookings sync automatically"
-                  : "Connect to prevent double-bookings"}
+                  : "Connect to prevent double-bookings — you may see a warning from Google, click Advanced → Go to Nudgle"}
               </p>
             </div>
           </div>
