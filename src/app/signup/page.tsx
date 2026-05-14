@@ -124,6 +124,7 @@ function SignupForm() {
               type="text"
               value={businessName}
               onChange={(e) => setBusinessName(e.target.value)}
+              autoComplete="off"
               className="w-full px-4 py-3 bg-surface-100 border border-surface-300 text-white rounded-lg focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition placeholder:text-surface-500"
               placeholder="e.g. Sarah's Hair Studio"
               required
@@ -139,6 +140,7 @@ function SignupForm() {
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
+              autoComplete="off"
               className="w-full px-4 py-3 bg-surface-100 border border-surface-300 text-white rounded-lg focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition placeholder:text-surface-500"
               placeholder="you@business.com"
               required
@@ -154,6 +156,7 @@ function SignupForm() {
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
+              autoComplete="new-password"
               className="w-full px-4 py-3 bg-surface-100 border border-surface-300 text-white rounded-lg focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition placeholder:text-surface-500"
               placeholder="At least 6 characters"
               minLength={6}

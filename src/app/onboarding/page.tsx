@@ -1,15 +1,25 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Bell, Calendar, Mail, MessageSquare, Phone, Zap } from "lucide-react";
 import { PhoneInput } from "@/components/phone-input";
 
 type Step = 1 | 2 | 3;
 
 export default function OnboardingPage() {
-  const [step, setStep] = useState<Step>(1);
+  return (
+    <Suspense>
+      <OnboardingFlow />
+    </Suspense>
+  );
+}
+
+function OnboardingFlow() {
+  const searchParams = useSearchParams();
+  const calendarConnected = searchParams.get("calendar") === "connected";
+  const [step, setStep] = useState<Step>(calendarConnected ? 2 : 1);
   const [reminderMethod, setReminderMethod] = useState<"email" | "sms" | "whatsapp">("email");
   const [phone, setPhone] = useState("");
   const [loading, setLoading] = useState(false);
@@ -98,26 +108,30 @@ export default function OnboardingPage() {
         {/* Step 2: Reminder method */}
         {step === 2 && (
           <div className="space-y-6">
+            {calendarConnected && (
+              <div className="flex items-center gap-2 p-3 bg-green-500/10 border border-green-500/20 rounded-lg">
+                <Calendar className="w-4 h-4 text-green-400" strokeWidth={2} />
+                <p className="text-sm text-green-400 font-medium">Google Calendar connected</p>
+              </div>
+            )}
             <div>
               <h2 className="text-2xl font-bold tracking-tight text-white">How should we remind customers?</h2>
               <p className="mt-2 text-surface-600">All channels included free &mdash; you can change this anytime</p>
             </div>
 
             <div className="space-y-3">
-              <button
-                onClick={() => setReminderMethod("whatsapp")}
-                className={`w-full p-4 rounded-lg border transition-all text-left flex items-center gap-4 active:scale-[0.98] ${
-                  reminderMethod === "whatsapp"
-                    ? "border-brand-500 bg-brand-500/10"
-                    : "border-surface-300 bg-surface-100 hover:border-surface-400"
-                }`}
+              <div
+                className="w-full p-4 rounded-lg border border-surface-300 bg-surface-100 text-left flex items-center gap-4 opacity-50 cursor-not-allowed relative"
               >
-                <MessageSquare className={`w-5 h-5 ${reminderMethod === "whatsapp" ? "text-brand-500" : "text-surface-500"}`} strokeWidth={2} />
+                <MessageSquare className="w-5 h-5 text-surface-500" strokeWidth={2} />
                 <div>
                   <p className="font-semibold text-white">WhatsApp</p>
                   <p className="text-sm text-surface-600">98% open rate &mdash; included free</p>
                 </div>
-              </button>
+                <span className="absolute top-2 right-3 text-[10px] font-semibold text-brand-400 bg-surface-900 px-1.5 py-0.5 rounded">
+                  Coming Soon
+                </span>
+              </div>
 
               <button
                 onClick={() => setReminderMethod("sms")}

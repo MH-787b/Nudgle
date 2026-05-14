@@ -220,22 +220,30 @@ export default function NewAppointmentPage() {
           </label>
           <div className="grid grid-cols-3 gap-2">
             {([
-              { value: "whatsapp" as const, label: "WhatsApp", icon: MessageSquare },
-              { value: "sms" as const, label: "SMS", icon: Phone },
-              { value: "email" as const, label: "Email", icon: Mail },
-            ]).map(({ value, label, icon: Icon }) => (
+              { value: "whatsapp" as const, label: "WhatsApp", icon: MessageSquare, comingSoon: true },
+              { value: "sms" as const, label: "SMS", icon: Phone, comingSoon: false },
+              { value: "email" as const, label: "Email", icon: Mail, comingSoon: false },
+            ]).map(({ value, label, icon: Icon, comingSoon }) => (
               <button
                 key={value}
                 type="button"
-                onClick={() => setReminderMethod(value)}
+                onClick={() => !comingSoon && setReminderMethod(value)}
+                disabled={comingSoon}
                 className={`relative flex items-center justify-center gap-1.5 py-2.5 rounded-lg border text-sm font-medium transition-all ${
-                  reminderMethod === value
-                    ? "border-brand-500 bg-brand-500/10 text-white"
-                    : "border-surface-300 bg-surface-100 text-surface-500 hover:border-surface-400"
+                  comingSoon
+                    ? "border-surface-300 bg-surface-100 text-surface-500 opacity-50 cursor-not-allowed"
+                    : reminderMethod === value
+                      ? "border-brand-500 bg-brand-500/10 text-white"
+                      : "border-surface-300 bg-surface-100 text-surface-500 hover:border-surface-400"
                 }`}
               >
                 <Icon className="w-4 h-4" strokeWidth={2} />
                 {label}
+                {comingSoon && (
+                  <span className="absolute -top-2 -right-1 text-[10px] font-semibold text-brand-400 bg-surface-900 px-1 rounded">
+                    Soon
+                  </span>
+                )}
               </button>
             ))}
           </div>
