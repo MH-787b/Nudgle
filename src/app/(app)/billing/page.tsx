@@ -56,8 +56,9 @@ export default async function BillingPage() {
   const trialDays = getTrialDaysLeft(profile.trial_ends_at);
   const effectivePlan = getEffectivePlan(profile);
   const currentConfig = PLAN_LIMITS[effectivePlan];
+  const pendingCard = profile.plan === 'trial' && !profile.trial_ends_at;
   const isOnTrial = profile.plan === 'trial' && trialDays !== null && trialDays > 0;
-  const isExpiredTrial = profile.plan === 'trial' && !isOnTrial;
+  const isExpiredTrial = profile.plan === 'trial' && !isOnTrial && !pendingCard;
 
   return (
     <div className="max-w-3xl lg:max-w-6xl mx-auto px-4 pt-8 pb-24">
@@ -74,8 +75,8 @@ export default async function BillingPage() {
           )}
         </div>
         <p className="text-2xl font-bold tracking-tight text-white">
-          {isExpiredTrial ? 'Trial Expired' : isOnTrial ? 'Free Trial' : currentConfig.name}
-          {!isOnTrial && !isExpiredTrial && effectivePlan !== 'trial' && (
+          {pendingCard ? 'Add Card to Start' : isExpiredTrial ? 'Trial Expired' : isOnTrial ? 'Free Trial' : currentConfig.name}
+          {!isOnTrial && !isExpiredTrial && !pendingCard && effectivePlan !== 'trial' && (
             <span className="text-base font-normal text-surface-600 ml-2">
               &pound;{currentConfig.price}/mo
             </span>
@@ -84,7 +85,21 @@ export default async function BillingPage() {
 
         {/* Usage bar — days for trial, appointments for paid */}
         <div className="mt-4">
-          {isExpiredTrial ? (
+          {pendingCard ? (
+            <div className="space-y-3">
+              <p className="text-sm text-surface-600">
+                Add your card details to start your 7-day free trial. You won&apos;t be charged until the trial ends.
+              </p>
+              <a
+                href={process.env.NEXT_PUBLIC_GUMROAD_STARTER_URL || "#"}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-block px-4 py-2 bg-brand-500 text-white text-sm font-semibold rounded-lg hover:bg-brand-600 transition-colors"
+              >
+                Add card &mdash; start free trial
+              </a>
+            </div>
+          ) : isExpiredTrial ? (
             <p className="text-sm text-red-400">
               Your trial has ended. Pick a plan below to continue using Nudgle.
             </p>
@@ -93,13 +108,13 @@ export default async function BillingPage() {
               <div className="flex justify-between text-sm mb-1.5">
                 <span className="text-surface-600">Trial period</span>
                 <span className="font-medium font-mono text-white">
-                  {trialDays} of 14 days
+                  {trialDays} of 7 days
                 </span>
               </div>
               <div className="h-1 bg-surface-300 rounded-full overflow-hidden">
                 <div
                   className="h-full bg-brand-500 rounded-full"
-                  style={{ width: `${Math.min(100, ((14 - (trialDays ?? 0)) / 14) * 100)}%` }}
+                  style={{ width: `${Math.min(100, ((7 - (trialDays ?? 0)) / 7) * 100)}%` }}
                 />
               </div>
               <p className="mt-2 text-xs text-surface-500">
@@ -157,8 +172,8 @@ export default async function BillingPage() {
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {tiers.map((tier) => {
           const config = PLAN_LIMITS[tier.key];
-          const isCurrent = !isExpiredTrial && (effectivePlan === tier.key || (isOnTrial && tier.key === 'starter'));
-          const isUpgrade = isExpiredTrial || tierOrder.indexOf(tier.key) > tierOrder.indexOf(effectivePlan);
+          const isCurrent = !isExpiredTrial && !pendingCard && (effectivePlan === tier.key || (isOnTrial && tier.key === 'starter'));
+          const isUpgrade = isExpiredTrial || pendingCard || tierOrder.indexOf(tier.key) > tierOrder.indexOf(effectivePlan);
 
           return (
             <div

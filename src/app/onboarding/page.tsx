@@ -3,7 +3,7 @@
 import { Suspense, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Bell, Calendar, Mail, MessageSquare, Phone, Zap } from "lucide-react";
+import { Bell, Calendar, CreditCard, Mail, MessageSquare, Phone } from "lucide-react";
 import { PhoneInput } from "@/components/phone-input";
 
 type Step = 1 | 2 | 3;
@@ -34,7 +34,8 @@ function OnboardingFlow() {
     window.location.href = url;
   }
 
-  async function activateReminders() {
+  /** Saves preferences and opens Gumroad checkout to collect card details. */
+  async function startTrial() {
     setLoading(true);
 
     const { data: { user } } = await supabase.auth.getUser();
@@ -43,13 +44,19 @@ function OnboardingFlow() {
     // Business name is in user metadata from signup — ensure it's saved to profile
     const businessName = user.user_metadata?.business_name;
 
+    // Save preferences but DON'T activate reminders — that happens when Gumroad webhook fires
     await supabase.from("profiles").update({
       reminder_method: reminderMethod,
       phone: (reminderMethod === "sms" || reminderMethod === "whatsapp") ? phone : null,
       onboarding_completed: true,
-      reminders_active: true,
       ...(businessName && { business_name: businessName }),
     }).eq("id", user.id);
+
+    // Open Gumroad Starter checkout with email prefilled
+    const gumroadUrl = process.env.NEXT_PUBLIC_GUMROAD_STARTER_URL;
+    if (gumroadUrl) {
+      window.open(`${gumroadUrl}?email=${encodeURIComponent(user.email || "")}`, "_blank");
+    }
 
     router.push("/dashboard");
     router.refresh();
@@ -190,46 +197,41 @@ function OnboardingFlow() {
           </div>
         )}
 
-        {/* Step 3: Activate */}
+        {/* Step 3: Start trial (card required) */}
         {step === 3 && (
           <div className="space-y-6 text-center">
             <div className="w-16 h-16 bg-brand-500/15 rounded-xl flex items-center justify-center mx-auto">
-              <Zap className="w-8 h-8 text-brand-500" strokeWidth={2} />
+              <CreditCard className="w-8 h-8 text-brand-500" strokeWidth={2} />
             </div>
 
             <div>
-              <h2 className="text-2xl font-bold tracking-tight text-white">You&apos;re all set</h2>
+              <h2 className="text-2xl font-bold tracking-tight text-white">Start your free trial</h2>
               <p className="mt-2 text-surface-600">
-                Your 14-day free trial starts now. Nudgle will send reminders before each appointment &mdash; and clients can self-book via your online booking page.
+                Add your card to start 7 days free. You won&apos;t be charged until the trial ends &mdash; cancel anytime.
               </p>
             </div>
 
             <div className="bg-surface-100 border border-surface-300 p-4 rounded-lg text-left space-y-3">
               <div className="flex justify-between text-sm">
-                <span className="text-surface-600">Reminder method</span>
-                <span className="font-medium font-mono text-white">
-                  {reminderMethod === "sms" ? "SMS" : reminderMethod === "whatsapp" ? "WhatsApp" : "Email"}
-                </span>
-              </div>
-              <div className="border-t border-surface-300" />
-              <div className="flex justify-between text-sm">
-                <span className="text-surface-600">Timing</span>
-                <span className="font-medium font-mono text-white">24h before</span>
-              </div>
-              <div className="border-t border-surface-300" />
-              <div className="flex justify-between text-sm">
-                <span className="text-surface-600">Confirmation</span>
-                <span className="font-medium font-mono text-white">Reply YES</span>
+                <span className="text-surface-600">Plan</span>
+                <span className="font-medium font-mono text-white">Starter &mdash; &pound;29/mo</span>
               </div>
               <div className="border-t border-surface-300" />
               <div className="flex justify-between text-sm">
                 <span className="text-surface-600">Trial</span>
-                <span className="font-medium font-mono text-green-400">14 days free</span>
+                <span className="font-medium font-mono text-green-400">7 days free</span>
+              </div>
+              <div className="border-t border-surface-300" />
+              <div className="flex justify-between text-sm">
+                <span className="text-surface-600">Reminders</span>
+                <span className="font-medium font-mono text-white">
+                  {reminderMethod === "sms" ? "SMS" : reminderMethod === "whatsapp" ? "WhatsApp" : "Email"} &mdash; 24h before
+                </span>
               </div>
               <div className="border-t border-surface-300" />
               <div className="flex justify-between text-sm">
                 <span className="text-surface-600">Online booking</span>
-                <span className="font-medium font-mono text-white">Ready to enable</span>
+                <span className="font-medium font-mono text-white">Included</span>
               </div>
             </div>
 
@@ -241,13 +243,17 @@ function OnboardingFlow() {
                 Back
               </button>
               <button
-                onClick={activateReminders}
+                onClick={startTrial}
                 disabled={loading}
                 className="flex-1 py-4 bg-brand-500 text-white rounded-lg font-bold hover:bg-brand-600 active:scale-[0.98] transition-all disabled:opacity-50"
               >
-                {loading ? "Activating..." : "Launch my dashboard"}
+                {loading ? "Setting up..." : "Start 7-day free trial"}
               </button>
             </div>
+
+            <p className="text-xs text-surface-500">
+              You&apos;ll be taken to our payment partner to add your card
+            </p>
           </div>
         )}
       </div>

@@ -153,7 +153,7 @@ export const PLAN_LIMITS: Record<PlanType, PlanConfig> = {
   },
 };
 
-export const TRIAL_DURATION_DAYS = 14;
+export const TRIAL_DURATION_DAYS = 7;
 
 /** Returns true if the user is on a trial that has expired. */
 export function isTrialExpired(plan: string, trialEndsAt: string | null): boolean {

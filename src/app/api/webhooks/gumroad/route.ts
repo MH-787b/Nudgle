@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { PLAN_LIMITS } from "@/lib/types";
+import { PLAN_LIMITS, TRIAL_DURATION_DAYS } from "@/lib/types";
 import type { PlanType } from "@/lib/types";
 
 function getSupabase() {
@@ -48,17 +48,42 @@ export async function POST(request: NextRequest) {
   const matchValue = userId || email;
 
   if (resourceName === "sale" || resourceName === "subscription_updated") {
-    // New purchase or resubscription — activate plan
-    await supabase
+    // Check if user is on trial with no trial_ends_at — this is a trial activation (card added)
+    const { data: existingProfile } = await supabase
       .from("profiles")
-      .update({
-        gumroad_sale_id: saleId,
-        gumroad_subscription_id: subscriptionId,
-        plan,
-        reminders_limit: config.appointments,
-        trial_ends_at: null,
-      })
-      .eq(matchColumn, matchValue);
+      .select("plan, trial_ends_at")
+      .eq(matchColumn, matchValue)
+      .single();
+
+    const isTrialActivation = existingProfile?.plan === "trial" && !existingProfile?.trial_ends_at;
+
+    if (isTrialActivation) {
+      // Trial activation — start the trial clock, activate reminders
+      const trialEndsAt = new Date();
+      trialEndsAt.setDate(trialEndsAt.getDate() + TRIAL_DURATION_DAYS);
+
+      await supabase
+        .from("profiles")
+        .update({
+          gumroad_sale_id: saleId,
+          gumroad_subscription_id: subscriptionId,
+          trial_ends_at: trialEndsAt.toISOString(),
+          reminders_active: true,
+        })
+        .eq(matchColumn, matchValue);
+    } else {
+      // Paid upgrade or resubscription — activate plan
+      await supabase
+        .from("profiles")
+        .update({
+          gumroad_sale_id: saleId,
+          gumroad_subscription_id: subscriptionId,
+          plan,
+          reminders_limit: config.appointments,
+          trial_ends_at: null,
+        })
+        .eq(matchColumn, matchValue);
+    }
   }
 
   if (resourceName === "cancellation" || resourceName === "subscription_ended") {

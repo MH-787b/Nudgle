@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Clock, AlertTriangle } from "lucide-react";
+import { Clock, AlertTriangle, CreditCard } from "lucide-react";
 
 interface TrialBannerProps {
   trialEndsAt: string | null;
@@ -9,12 +9,36 @@ interface TrialBannerProps {
 export function TrialBanner({ trialEndsAt, plan }: TrialBannerProps) {
   if (plan !== "trial") return null;
 
+  // Card not yet added — trial hasn't started
+  const pendingCard = !trialEndsAt;
+
   const daysLeft = trialEndsAt
     ? Math.max(0, Math.ceil((new Date(trialEndsAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
     : 0;
 
-  const expired = daysLeft <= 0;
-  const urgent = daysLeft <= 3;
+  const expired = !pendingCard && daysLeft <= 0;
+  const urgent = !pendingCard && daysLeft <= 3 && daysLeft > 0;
+
+  if (pendingCard) {
+    return (
+      <div className="bg-brand-500/10 border-b border-brand-500/20 px-4 py-2.5">
+        <div className="max-w-5xl mx-auto flex items-center justify-between gap-4">
+          <div className="flex items-center gap-2 text-sm text-brand-400">
+            <CreditCard className="w-4 h-4 shrink-0" strokeWidth={2} />
+            <span>Add your card to start your 7-day free trial</span>
+          </div>
+          <a
+            href={process.env.NEXT_PUBLIC_GUMROAD_STARTER_URL || "/billing"}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="shrink-0 px-3 py-1 bg-brand-500 text-white text-sm font-semibold rounded-lg hover:bg-brand-600 transition-colors"
+          >
+            Add card
+          </a>
+        </div>
+      </div>
+    );
+  }
 
   if (expired) {
     return (

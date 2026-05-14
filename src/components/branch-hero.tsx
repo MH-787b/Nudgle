@@ -210,10 +210,10 @@ export default function BranchHero() {
             href="/signup"
             className="px-8 py-3.5 bg-surface-100 border border-brand-500 text-white text-base font-semibold rounded-xl hover:bg-surface-200 active:scale-[0.98] transition-all"
           >
-            Start your free 14-day trial
+            Start your free 7-day trial
           </Link>
           <p className="text-sm text-surface-500 font-mono">
-            No credit card required &middot; Setup in 60 seconds
+            Setup in 60 seconds
           </p>
         </div>
       </div>

@@ -141,6 +141,7 @@ export default async function DashboardPage({
     </Link>
   );
 
+  const pendingCard = profile?.plan === 'trial' && !profile?.trial_ends_at;
   const trialDaysLeft = profile?.trial_ends_at
     ? Math.max(0, Math.ceil((new Date(profile.trial_ends_at).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
     : null;
@@ -149,7 +150,22 @@ export default async function DashboardPage({
 
   const usageSection = profile && (
     <div className="bg-surface-100 p-4 rounded-xl border border-surface-300 mb-6">
-      {expired ? (
+      {pendingCard ? (
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm font-medium text-brand-400">Add card to start trial</p>
+            <p className="text-xs text-surface-600 mt-0.5">7 days free, cancel anytime</p>
+          </div>
+          <a
+            href={process.env.NEXT_PUBLIC_GUMROAD_STARTER_URL || "/billing"}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="px-3 py-1.5 bg-brand-500 text-white text-sm font-semibold rounded-lg hover:bg-brand-600 transition-colors"
+          >
+            Add card
+          </a>
+        </div>
+      ) : expired ? (
         <div className="flex items-center justify-between">
           <div>
             <p className="text-sm font-medium text-red-400">Trial expired</p>
@@ -173,7 +189,7 @@ export default async function DashboardPage({
           <div className="mt-2 h-1 bg-surface-300 rounded-full overflow-hidden">
             <div
               className="h-full bg-brand-500 rounded-full transition-all"
-              style={{ width: `${Math.min(100, ((14 - (trialDaysLeft ?? 0)) / 14) * 100)}%` }}
+              style={{ width: `${Math.min(100, ((7 - (trialDaysLeft ?? 0)) / 7) * 100)}%` }}
             />
           </div>
           <p className="mt-2 text-xs text-surface-500">

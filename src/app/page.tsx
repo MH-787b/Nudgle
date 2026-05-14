@@ -237,7 +237,7 @@ export default function Home() {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-3xl mx-auto animate-in delay-1">
           {/* Starter — highlighted, free trial CTA */}
           <div className="bg-surface-100 border-2 border-brand-500 rounded-xl p-6 relative">
-            <span className="absolute -top-3 left-6 text-xs font-mono font-medium text-surface-900 bg-brand-500 px-2.5 py-0.5 rounded">14 days free</span>
+            <span className="absolute -top-3 left-6 text-xs font-mono font-medium text-surface-900 bg-brand-500 px-2.5 py-0.5 rounded">7 days free</span>
             <h3 className="font-bold text-white mb-1">Starter</h3>
             <p className="text-sm text-surface-600 mb-4">For solo &amp; small businesses</p>
             <div className="mb-6">
@@ -264,9 +264,9 @@ export default function Home() {
               href="/signup"
               className="block text-center w-full px-6 py-3 bg-brand-500 text-white rounded-lg font-semibold hover:bg-brand-600 active:scale-[0.98] transition-all"
             >
-              Start 14-day free trial
+              Start 7-day free trial
             </Link>
-            <p className="text-xs text-surface-500 text-center mt-2">No charge until trial ends</p>
+            <p className="text-xs text-surface-500 text-center mt-2">Cancel anytime &mdash; no charge during trial</p>
           </div>
 
           {/* Business */}
