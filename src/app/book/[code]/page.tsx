@@ -138,7 +138,8 @@ export default async function BookingPage({ params }: { params: Promise<{ code: 
 
         {/* Powered by */}
         <p className="text-center text-xs text-surface-500 mt-6">
-          Powered by <a href="https://nudgle.vercel.app" className="text-brand-500 hover:text-brand-400 transition-colors">Nudgle</a>
+          Powered by <a href="https://nudgle.co.uk" className="text-brand-500 hover:text-brand-400 transition-colors font-medium">Nudgle</a>
+          <span className="text-surface-500"> — online booking &amp; reminders for your business</span>
         </p>
       </div>
     </div>
