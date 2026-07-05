@@ -1,4 +1,4 @@
-import { CheckCircle, Clock, Bell, Mail, MessageSquare, Phone, Calendar, Zap, Link2, Settings, ArrowRight } from "lucide-react";
+import { CheckCircle, Clock, Bell, Mail, MessageSquare, Phone, Calendar, Zap, Link2, Settings, ArrowRight, Play } from "lucide-react";
 import Link from "next/link";
 import BranchHero from "@/components/branch-hero";
 
@@ -8,56 +8,31 @@ export default function Home() {
       {/* Hero — full viewport, search-bar with branch animation */}
       <BranchHero />
 
-      {/* Tutorial videos */}
-      <section id="tutorial" className="px-4 sm:px-8 py-24 sm:py-32 max-w-[1400px] mx-auto border-t border-surface-300">
-        <div className="text-center mb-12 animate-in">
-          <p className="text-sm font-mono font-medium text-brand-500 tracking-wider uppercase mb-4">
-            See it in action
-          </p>
-          <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-white mb-4">
-            Setup in 60 seconds
+      {/* Video tutorial */}
+      <section id="how-it-works" className="px-4 sm:px-8 py-24 sm:py-32 max-w-[900px] mx-auto border-t border-surface-300">
+        <div className="text-center mb-8 animate-in">
+          <div className="flex items-center justify-center gap-2 mb-4">
+            <Play className="w-4 h-4 text-brand-500" strokeWidth={2} />
+            <span className="text-xs font-mono font-medium text-brand-400 uppercase tracking-wider">See it in action</span>
+          </div>
+          <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-white mb-3">
+            Watch how Nudgle works
           </h2>
-          <p className="text-surface-600 leading-relaxed max-w-[48ch] mx-auto">
-            Two short videos &mdash; what Nudgle does, and how to get started.
+          <p className="text-surface-600 leading-relaxed max-w-[45ch] mx-auto">
+            60 seconds is all it takes to see why businesses switch to Nudgle.
           </p>
         </div>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 max-w-full mx-auto">
-          {/* Feature tutorial */}
-          <div className="animate-in delay-1">
-            <h3 className="text-lg font-bold text-white mb-3">What Nudgle does</h3>
-            <div className="rounded-2xl overflow-hidden border border-surface-300 shadow-2xl bg-surface-100">
-              {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
-              <video
-                controls
-                preload="auto"
-                playsInline
-                webkit-playsinline=""
-                className="w-full block"
-                style={{ minHeight: "200px" }}
-              >
-                <source src="/tutorial-features.mp4" type="video/mp4" />
-                Your browser does not support the video tag.
-              </video>
-            </div>
-          </div>
-          {/* Setup tutorial */}
-          <div className="animate-in delay-2">
-            <h3 className="text-lg font-bold text-white mb-3">How to set up</h3>
-            <div className="rounded-2xl overflow-hidden border border-surface-300 shadow-2xl bg-surface-100">
-              {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
-              <video
-                controls
-                preload="auto"
-                playsInline
-                webkit-playsinline=""
-                className="w-full block"
-                style={{ minHeight: "200px" }}
-              >
-                <source src="/tutorial-setup.mp4" type="video/mp4" />
-                Your browser does not support the video tag.
-              </video>
-            </div>
-          </div>
+        <div className="animate-in delay-1">
+          <video
+            className="w-full rounded-2xl border border-surface-300 shadow-2xl"
+            controls
+            preload="metadata"
+            playsInline
+            poster=""
+          >
+            <source src="/promo.mp4" type="video/mp4" />
+            Your browser does not support video playback.
+          </video>
         </div>
       </section>
 
